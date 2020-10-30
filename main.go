@@ -10,6 +10,8 @@ import (
 var version string
 
 func main() {
+	// Setting arg 0 makes sure that -help output has the correct program name when being invoked with "go run"
+	os.Args[0] = "cloudflare-ddns"
 	var flagVersion bool
 	flag.BoolVar(&flagVersion, "version", false, "Print the program version")
 

@@ -16,7 +16,7 @@ PLATFORMS := darwin-amd64 linux-386 linux-amd64
 default: all shasums test readme
 
 build: $(DIST)/$(BIN_NAME)
-$(DIST)/$(BIN_NAME):
+$(DIST)/$(BIN_NAME): $(SOURCE)
 	go build $(ARGS) -ldflags="$(LDFLAGS)" -o $@
 
 all: $(addprefix $(DIST)/$(BIN_NAME)-,$(PLATFORMS))
@@ -38,9 +38,8 @@ install:
 	go install -ldflags=$(LDFLAGS)
 
 readme: README.md
-README.md: README.md.rb
-	#@if [ ! -f .git/hooks/pre-commit ]; then printf "Missing pre-commit hook for readme, be sure to copy it from hclq-pages repo"; exit 1; fi
-	erb README.md.rb > README.md
+README.md: README.tpl.md
+	go run tools/readmegen/main.go README.tpl.md > README.md
 
 test: $(GO_JUNIT_REPORT) build
 	go test -v "./..."
