@@ -13,25 +13,25 @@ BINS   := $(shell find $(DIST) -name '$(BIN_NAME)-*')
 PLATFORMS := darwin-amd64 linux-386 linux-amd64
 #linux-arm linux-arm64 freebsd-386 freebsd-amd64 openbsd-386 openbsd-x64 solaris-amd64 windows-amd64
 
-default: build test readme
+default: all shasums test readme
 
 build: $(DIST)/$(BIN_NAME)
 $(DIST)/$(BIN_NAME):
 	go build $(ARGS) -ldflags="$(LDFLAGS)" -o $@
 
-all: $(addsuffix /$(BIN), $(addprefix $(DIST)/,$(PLATFORMS)))
+all: $(addprefix $(DIST)/$(BIN_NAME)-,$(PLATFORMS))
 
 clean:
 	rm -rf dist && mkdir dist
 
-$(DIST)/%/$(BIN_NAME): GOOS   = $(word 1,$(subst -, ,$*))
-$(DIST)/%/$(BIN_NAME): GOARCH = $(word 2,$(subst -, ,$*))
-$(DIST)/%/$(BIN_NAME): $(SOURCE)
+$(DIST)/$(BIN_NAME)-%: GOOS   = $(word 1,$(subst -, ,$*))
+$(DIST)/$(BIN_NAME)-%: GOARCH = $(word 2,$(subst -, ,$*))
+$(DIST)/$(BIN_NAME)-%: $(SOURCE)
 	GOOS=$(GOOS) GOARCH=$(GOARCH) go build $(ARGS) -ldflags="$(LDFLAGS)" -o $@
-	cd dist && shasum -a 256 hclq-* > hclq-shasums
 
-shasums:
-	cd "$(DIST)" && shasum -a 256 $(BIN_NAME)-* > hclq-shasums
+shasums: $(DIST)/$(BIN_NAME)-shasums
+$(DIST)/$(BIN_NAME)-shasums: all
+	cd $(DIST) && shasum -a 256 $(BIN_NAME)-* > $(BIN_NAME)-shasums
 
 install:
 	#go install -mod=vendor -ldflags="${LDFLAGS}"
