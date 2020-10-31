@@ -9,6 +9,7 @@ import (
 	"github.com/juju/errors"
 	"github.com/mattolenik/cloudflare-ddns-client/ip"
 	"github.com/pelletier/go-toml"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
@@ -19,8 +20,17 @@ const configFileName = "cloudflare-ddns.conf"
 
 // Config represents TOML program configuration
 type Config struct {
+	// Domain name of the DNS record
 	Domain string `toml:"domain"`
+
+	// DNS record to update
 	Record string `toml:"record"`
+
+	// CloudFlare API token, must have //TODO: perms here
+	Token string `toml:"token"`
+
+	// Log output, either "pretty" or "json"
+	LogFormat string `toml:"log_format" default:"pretty"`
 }
 
 func main() {
@@ -37,11 +47,17 @@ func mainE() error {
 	os.Args[0] = "cloudflare-ddns"
 	var flagVersion bool
 	var flagConfigPath string
+	var flagLogFormat string
+
 	flag.BoolVar(&flagVersion, "version", false, "Print the program version")
 	flag.StringVar(&flagConfigPath, "config", "/etc/"+configFileName, "Path to configuration file")
+	flag.StringVar(&flagLogFormat, "log-format", "pretty", "Log output format, either json or pretty")
 
 	flag.Parse()
 
+	if flagLogFormat == "pretty" {
+		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	}
 	if flagVersion {
 		printVersion()
 	}

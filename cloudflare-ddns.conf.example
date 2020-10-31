@@ -1,5 +1,7 @@
 # Configuration for cloudflare-ddns, TOML format.
-# domain is the domain name that you own
+# The domain name that you own
 domain = "example.com"
-# record may be a subdomain, or the same as the domain name
+# The DNS record to update, may be a subdomain or the domain name itself
 record = "subdomain.example.com"
+# Your CloudFlare API token, must have permissions # TODO
+token = "your-cloudflare-api-token-here"
