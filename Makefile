@@ -10,8 +10,7 @@ DIST            = dist
 SOURCE := $(shell find $(PROJECT_ROOT) -name '*.go')
 BINS   := $(shell find $(DIST) -name '$(BIN_NAME)-*')
 
-PLATFORMS := darwin-amd64 linux-386 linux-amd64
-#linux-arm linux-arm64 freebsd-386 freebsd-amd64 openbsd-386 openbsd-x64 solaris-amd64 windows-amd64
+PLATFORMS ?= darwin-amd64 dragonfly-amd64 freebsd-amd64 freebsd-arm freebsd-arm64 linux-amd64 linux-arm linux-arm64 netbsd-amd64 netbsd-arm netbsd-arm64 openbsd-amd64 openbsd-arm openbsd-arm64 windows-amd64 windows-arm
 
 default: all shasums test readme
 
