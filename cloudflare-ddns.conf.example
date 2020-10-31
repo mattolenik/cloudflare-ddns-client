@@ -1,0 +1,5 @@
+# Configuration for cloudflare-ddns, TOML format.
+# domain is the domain name that you own
+domain = "example.com"
+# record may be a subdomain, or the same as the domain name
+record = "subdomain.example.com"
