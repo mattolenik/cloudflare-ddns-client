@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/cloudflare/cloudflare-go"
 	"github.com/juju/errors"
 	"github.com/mattolenik/cloudflare-ddns-client/ip"
 	"github.com/pelletier/go-toml"
@@ -61,22 +62,71 @@ func mainE() error {
 	if flagVersion {
 		printVersion()
 	}
-	config, err := loadConfig(flagConfigPath)
+	c, err := loadConfig(flagConfigPath)
 	if err != nil {
 		return errors.Trace(err)
 	}
-	fmt.Println(*config)
+	fmt.Println(*c)
 
 	ip, err := ip.GetExternalIP()
 	if err != nil {
 		return errors.Annotate(err, "unable to retrieve external IP")
 	}
-	fmt.Println(ip)
+	log.Info().Msgf("Found external IP '%s'", ip)
+
+	api, err := cloudflare.NewWithAPIToken(c.Token)
+	if err != nil {
+		return errors.Annotate(err, "unable to connect to CloudFlare, token may be invalid")
+	}
+	// Get the zone ID for the domain
+	zoneID, err := api.ZoneIDByName(c.Domain)
+	if err != nil {
+		return errors.Annotatef(err, "unable to retrieve zone ID for domain '%s' from CloudFlare", c.Domain)
+	}
+	// Find the record ID
+	records, err := api.DNSRecords(zoneID, cloudflare.DNSRecord{Type: "A"})
+	if err != nil {
+		return errors.Annotate(err, "unable to retrieve zone ID from CloudFlare")
+	}
+	var recordID string
+	for _, record := range records {
+		if record.Content == c.Record {
+			recordID = record.ID
+			if record.Content == ip {
+				log.Info().Msgf("DNS record '%s' is already set to IP '%s'", c.Record, ip)
+				return nil
+			}
+			break
+		}
+	}
+	// Create the record if it's not already there
+	if recordID == "" {
+		log.Info().Msgf("No DNS '%s' found for domain '%s', creating now", c.Record, c.Domain)
+		resp, err := api.CreateDNSRecord(zoneID, cloudflare.DNSRecord{
+			Content: ip,
+			Type:    "A",
+		})
+		if err != nil {
+			return errors.Annotatef(err, "failed to create DNS record '%s' on domain '%s'", c.Record, c.Domain)
+		}
+		recordID = resp.Result.ID
+	}
+	// Update the record
+	err = api.UpdateDNSRecord(zoneID, c.Record, cloudflare.DNSRecord{
+		Content: ip,
+		Type:    "A",
+	})
+	if err != nil {
+		return errors.Annotatef(err, "failed to update DNS record '%s' to IP address '%s'", c.Record, ip)
+	}
+
+	log.Info().Msgf("Successfully updated DNS record '%s' to point to '%s'", c.Record, ip)
 	return nil
 }
 
 // loadConfig loads the TOML configuration at the specified path.
 func loadConfig(path string) (*Config, error) {
+	// TODO add debug logging
 	config := &Config{}
 	contents, err := ioutil.ReadFile(path)
 	if err != nil {

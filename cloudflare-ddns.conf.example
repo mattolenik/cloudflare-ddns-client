@@ -1,7 +1,13 @@
 # Configuration for cloudflare-ddns, TOML format.
+
 # The domain name that you own
 domain = "example.com"
+
 # The DNS record to update, may be a subdomain or the domain name itself
 record = "subdomain.example.com"
+
 # Your CloudFlare API token, must have permissions # TODO
 token = "your-cloudflare-api-token-here"
+
+# Uncomment to use JSON logs instead of human-readable console logs
+#log_format = "json"
