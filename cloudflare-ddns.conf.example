@@ -6,8 +6,11 @@ domain = "example.com"
 # The DNS record to update, may be a subdomain or the domain name itself
 record = "subdomain.example.com"
 
-# Your CloudFlare API token, must have permissions # TODO
+# Your CloudFlare API token, must have permissions Zone:Zone:Read, Zone:DNS:Edit
 token = "your-cloudflare-api-token-here"
 
 # Uncomment to use JSON logs instead of human-readable console logs
 #log_format = "json"
+
+# Uncomment to display more detailed logs for troubleshooting
+#log_verbose = true

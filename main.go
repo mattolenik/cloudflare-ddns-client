@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 
 	"github.com/cloudflare/cloudflare-go"
 	"github.com/juju/errors"
@@ -19,6 +20,8 @@ var version string
 
 const configFileName = "cloudflare-ddns.conf"
 
+var flagLogFormat string
+
 // Config represents TOML program configuration
 type Config struct {
 	// Domain name of the DNS record
@@ -27,18 +30,29 @@ type Config struct {
 	// DNS record to update
 	Record string `toml:"record"`
 
-	// CloudFlare API token, must have //TODO: perms here
+	// CloudFlare API token, must have permissions Zone:Zone:Read, Zone:DNS:Edit
 	Token string `toml:"token"`
 
 	// Log output, either "pretty" or "json"
 	LogFormat string `toml:"log_format" default:"pretty"`
+
+	// Print verbose debug logs
+	LogVerbose bool `toml:"log_verbose" default:"false"`
 }
 
 func main() {
 	err := mainE()
 	if err != nil {
-		// use stack trace
-		log.Error().Msg(err.Error())
+		var msg string
+		if e, ok := err.(*errors.Err); ok {
+			trace := e.StackTrace()
+			if flagLogFormat == "pretty" {
+				msg = strings.Join(trace, "\n")
+			} else {
+				msg = strings.Join(trace, " \\ ")
+			}
+		}
+		log.Error().Msg(msg)
 		os.Exit(1)
 	}
 }
@@ -47,10 +61,11 @@ func mainE() error {
 	// Setting arg 0 makes sure that -help output has the correct program name when being invoked with "go run"
 	os.Args[0] = "cloudflare-ddns"
 	var flagVersion bool
+	var flagVerbose bool
 	var flagConfigPath string
-	var flagLogFormat string
 
 	flag.BoolVar(&flagVersion, "version", false, "Print the program version")
+	flag.BoolVar(&flagVerbose, "verbose", false, "Print debug logs")
 	flag.StringVar(&flagConfigPath, "config", "/etc/"+configFileName, "Path to configuration file")
 	flag.StringVar(&flagLogFormat, "log-format", "pretty", "Log output format, either json or pretty")
 
@@ -66,7 +81,14 @@ func mainE() error {
 	if err != nil {
 		return errors.Trace(err)
 	}
-	fmt.Println(*c)
+
+	// Set log level to verbose if either flag or config values are set
+	flagVerbose = flagVerbose || c.LogVerbose
+	if flagVerbose {
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	} else {
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	}
 
 	ip, err := ip.GetExternalIP()
 	if err != nil {
@@ -83,14 +105,16 @@ func mainE() error {
 	if err != nil {
 		return errors.Annotatef(err, "unable to retrieve zone ID for domain '%s' from CloudFlare", c.Domain)
 	}
-	// Find the record ID
+	// Get the record ID
 	records, err := api.DNSRecords(zoneID, cloudflare.DNSRecord{Type: "A"})
 	if err != nil {
 		return errors.Annotate(err, "unable to retrieve zone ID from CloudFlare")
 	}
+	// Find the specific record
 	var recordID string
 	for _, record := range records {
-		if record.Content == c.Record {
+		log.Debug().Msgf("Examining DNS record ID '%s' with name '%s'", record.ID, record.Name)
+		if record.Name == c.Record {
 			recordID = record.ID
 			if record.Content == ip {
 				log.Info().Msgf("DNS record '%s' is already set to IP '%s'", c.Record, ip)
@@ -105,6 +129,7 @@ func mainE() error {
 		resp, err := api.CreateDNSRecord(zoneID, cloudflare.DNSRecord{
 			Content: ip,
 			Type:    "A",
+			Name:    c.Record,
 		})
 		if err != nil {
 			return errors.Annotatef(err, "failed to create DNS record '%s' on domain '%s'", c.Record, c.Domain)
@@ -112,7 +137,7 @@ func mainE() error {
 		recordID = resp.Result.ID
 	}
 	// Update the record
-	err = api.UpdateDNSRecord(zoneID, c.Record, cloudflare.DNSRecord{
+	err = api.UpdateDNSRecord(zoneID, recordID, cloudflare.DNSRecord{
 		Content: ip,
 		Type:    "A",
 	})
@@ -126,7 +151,7 @@ func mainE() error {
 
 // loadConfig loads the TOML configuration at the specified path.
 func loadConfig(path string) (*Config, error) {
-	// TODO add debug logging
+	log.Debug().Msgf("Loading config file '%s'", path)
 	config := &Config{}
 	contents, err := ioutil.ReadFile(path)
 	if err != nil {
