@@ -26,7 +26,7 @@ clean:
 $(DIST)/$(BIN_NAME)-%: GOOS   = $(word 1,$(subst -, ,$*))
 $(DIST)/$(BIN_NAME)-%: GOARCH = $(word 2,$(subst -, ,$*))
 $(DIST)/$(BIN_NAME)-%: $(SOURCE)
-	CGO=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build $(ARGS) -ldflags="$(LDFLAGS)" -o $@
+	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build $(ARGS) -ldflags="$(LDFLAGS)" -o $@
 
 shasums: $(DIST)/$(BIN_NAME)-shasums
 $(DIST)/$(BIN_NAME)-shasums: all
