@@ -95,7 +95,12 @@ func mainE() error {
 		return errors.Annotate(err, "unable to retrieve external IP")
 	}
 	log.Info().Msgf("Found external IP '%s'", ip)
+	err = UpdateCloudFlare(c)
+	return errors.Annotate(err, "failed to update CloudFlare")
+}
 
+// UpdateCloudFlare updates the CloudFlare DNS record
+func UpdateCloudFlare(c *Config) error {
 	api, err := cloudflare.NewWithAPIToken(c.Token)
 	if err != nil {
 		return errors.Annotate(err, "unable to connect to CloudFlare, token may be invalid")
