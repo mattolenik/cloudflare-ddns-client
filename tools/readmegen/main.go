@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
-	"html/template"
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"text/template"
 )
 
 // This is a helper program for generating the README.md file from a template.

@@ -3,6 +3,7 @@ package cmd
 import (
 	"os"
 	"strings"
+	"time"
 
 	"github.com/juju/errors"
 	"github.com/mattolenik/cloudflare-ddns-client/conf"
@@ -28,7 +29,7 @@ Configuration flags can be set by defining an environment variable of the same
 name but prefixed with ` + "`CLOUDFLARE_DDNS`." + `
 For example, ` + "`CLOUDFLARE_DDNS_DOMAIN=mydomain.com`" + ` can be used to set the domain flag.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		ip, err := ip.GetPublicIP()
+		ip, err := ip.GetPublicIPWithRetry(5, 30*time.Second)
 		if err != nil {
 			return errors.Annotate(err, "unable to retrieve public IP")
 		}

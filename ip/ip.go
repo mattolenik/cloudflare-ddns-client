@@ -34,6 +34,20 @@ var dnsLookupOpenDNS = dnsLookup{
 	RecordType: "A",
 }
 
+// GetPublicIPWithRetry calls GetPublicIP and with numRetries attempts waiting delayInSeconds after each attempt.
+func GetPublicIPWithRetry(numRetries int, delay time.Duration) (string, error) {
+	var i int
+	for i = 0; i < numRetries; i++ {
+		ip, err := GetPublicIP()
+		if err == nil {
+			return ip, nil
+		}
+		log.Warn().Msgf("failed to retrieve public IP, attempt #%d, retrying in %d", i+1, delay.String())
+		time.Sleep(delay)
+	}
+	return "", errors.Errorf("failed to retrieve public IP after %d attempts", i)
+}
+
 // GetPublicIP tries to detect the public IP address of this machine. First using DNS, then using several public HTTP APIs.
 func GetPublicIP() (string, error) {
 	ip, success, errs := getPublicIPFromDNS(dnsLookupOpenDNS, dnsLookupGoogle)

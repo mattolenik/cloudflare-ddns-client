@@ -8,6 +8,7 @@ FLAGS          := -trimpath
 PROJECT_ROOT   := $(shell cd -P -- '$(shell dirname -- "$0")' && pwd -P)
 BIN_NAME       := cloudflare-ddns
 DIST           := dist
+GOTESTSUM      := go run gotest.tools/gotestsum
 
 SOURCE := $(shell find $(PROJECT_ROOT) -name '*.go')
 BINS   := $(shell find $(DIST) -name '$(BIN_NAME)-*')
@@ -42,7 +43,7 @@ README.md: README.tpl.md
 	go run tools/readmegen/main.go README.tpl.md > README.md
 
 test:
-	go test -v "./..."
+	$(GOTESTSUM) --format testname --junitfile $(DIST)/test-results.xml
 
 
 .PHONY: clean install test

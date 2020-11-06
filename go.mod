@@ -4,7 +4,6 @@ go 1.15
 
 require (
 	github.com/cloudflare/cloudflare-go v0.13.4
-	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/juju/errors v0.0.0-20200330140219-3fe23663418f
 	github.com/juju/testing v0.0.0-20201030020617-7189b3728523 // indirect
 	github.com/lixiangzhong/dnsutil v0.0.0-20191203032812-75ad39d2945a
@@ -24,4 +23,5 @@ require (
 	golang.org/x/sys v0.0.0-20201101102859-da207088b7d1 // indirect
 	golang.org/x/text v0.3.4 // indirect
 	gopkg.in/ini.v1 v1.62.0 // indirect
+	gotest.tools/gotestsum v0.6.0
 )
