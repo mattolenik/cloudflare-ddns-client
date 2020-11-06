@@ -10,28 +10,11 @@ All it requires from you are your domain name, e.g. `mydomain.com`, your DNS rec
  4. Using `https://ipecho.net/plain`
  5. Using `https://wtfismyip.com/text`
 
-## Usage
-```
-A dynamic DNS client for CloudFlare. Automatically detects your public IP and
-creates/updates a DNS record in CloudFlare.
-
-Configuration flags can be set by defining an environment variable of the same
-name but prefixed with `CLOUDFLARE_DDNS`.
-For example, `CLOUDFLARE_DDNS_DOMAIN=mydomain.com` can be used to set the domain flag.
-
-Usage:
-  cloudflare-ddns [flags]
-
-Flags:
-      --config string   Path to config file (default is /etc/cloudflare-ddns.toml)
-      --domain string   Domain name in CloudFlare, e.g. example.com
-  -h, --help            help for cloudflare-ddns
-      --json            Log format, either pretty or json, defaults to pretty
-      --record string   DNS record name in CloudFlare, may be subdomain or same as domain
-      --token string    CloudFlare API token with permissions Zone:Zone:Read and Zone:DNS:Edit
-  -v, --verbose         Verbose logging, prints additional log output
-      --version         version for cloudflare-ddns
-
+## Example
+```console
+$ cloudflare-ddns --domain mydomain.com --record sub.mydomain.com --token <cloudflare-api-token>
+[90m11:16PM[0m [32mINF[0m Found external IP '97.113.235.123'
+[90m11:16PM[0m [32mINF[0m DNS record 'sub.mydomain.com' is already set to IP '97.113.235.123'
 ```
 
 ## Installation
@@ -69,4 +52,28 @@ docker run --rm -v /absolute/path/to/cloudflare-ddns.conf:/etc/cloudflare-ddns.c
 With a environment variables:
 ```sh
 docker run --rm -e CLOUDFLARE_DDNS_DOMAIN=mydomain.com -e CLOUDFLARE_DDNS_RECORD=sub.mydomain.com -e CLOUDFLARE_DDNS_TOKEN=<your-cloudflare-api-token> mattolenik/cloudflare-ddns-client
+```
+
+## Command-Line Usage
+```
+A dynamic DNS client for CloudFlare. Automatically detects your public IP and
+creates/updates a DNS record in CloudFlare.
+
+Configuration flags can be set by defining an environment variable of the same
+name but prefixed with `CLOUDFLARE_DDNS`.
+For example, `CLOUDFLARE_DDNS_DOMAIN=mydomain.com` can be used to set the domain flag.
+
+Usage:
+  cloudflare-ddns [flags]
+
+Flags:
+      --config string   Path to config file (default is /etc/cloudflare-ddns.toml)
+      --domain string   Domain name in CloudFlare, e.g. example.com
+  -h, --help            help for cloudflare-ddns
+      --json            Log format, either pretty or json, defaults to pretty
+      --record string   DNS record name in CloudFlare, may be subdomain or same as domain
+      --token string    CloudFlare API token with permissions Zone:Zone:Read and Zone:DNS:Edit
+  -v, --verbose         Verbose logging, prints additional log output
+      --version         version for cloudflare-ddns
+
 ```

@@ -10,9 +10,11 @@ All it requires from you are your domain name, e.g. `mydomain.com`, your DNS rec
  4. Using `https://ipecho.net/plain`
  5. Using `https://wtfismyip.com/text`
 
-## Usage
-```
-{{ run "go" "run" "main.go" "--help" }}
+## Example
+```console
+$ cloudflare-ddns --domain mydomain.com --record sub.mydomain.com --token <cloudflare-api-token>
+[90m11:16PM[0m [32mINF[0m Found external IP '97.113.235.123'
+[90m11:16PM[0m [32mINF[0m DNS record 'sub.mydomain.com' is already set to IP '97.113.235.123'
 ```
 
 ## Installation
@@ -41,4 +43,9 @@ docker run --rm -v /absolute/path/to/cloudflare-ddns.conf:/etc/cloudflare-ddns.c
 With a environment variables:
 ```sh
 docker run --rm -e CLOUDFLARE_DDNS_DOMAIN=mydomain.com -e CLOUDFLARE_DDNS_RECORD=sub.mydomain.com -e CLOUDFLARE_DDNS_TOKEN=<your-cloudflare-api-token> mattolenik/cloudflare-ddns-client
+```
+
+## Command-Line Usage
+```
+{{ run "go" "run" "main.go" "--help" }}
 ```
