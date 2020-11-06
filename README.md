@@ -1,3 +1,10 @@
+[![GitHub Release](https://img.shields.io/github/v/release/mattolenik/cloudflare-ddns-client?label=Release&logo=github&logoColor=white)](https://github.com/mattolenik/cloudflare-ddns-client/releases)
+[![Docker Tag](https://img.shields.io/docker/v/mattolenik/cloudflare-ddns-client?color=blue&label=Docker%20Tag&logo=docker&logoColor=white)](https://hub.docker.com/repository/docker/mattolenik/cloudflare-ddns-client)
+
+![Functional Tests](https://img.shields.io/github/workflow/status/mattolenik/cloudflare-ddns-client/Functional%20Tests?label=Functional%20Tests)
+
+![License](https://img.shields.io/github/license/mattolenik/cloudflare-ddns-client?color=blue&label=License)
+
 # cloudflare-ddns-client
 This is a DDNS client for CloudFlare, written in Go. It makes multiple attemps to retrieve your public IP, first using DNS and then several public APIs. It is well tested and very robust, and will make several retries before failing.
 
