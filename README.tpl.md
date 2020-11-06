@@ -8,12 +8,10 @@
 
 ![License](https://img.shields.io/github/license/mattolenik/cloudflare-ddns-client?color=blue&label=License)
 
-# Better Dynamic DNS for your Home Lab
+# Better Dynamic DNS for Your Home Lab
 This is a cross-platform DDNS client for CloudFlare, written in Go. It makes multiple attemps to retrieve your public IP, first using DNS and then several public APIs. It is well tested and very robust, and will make several retries before failing. It also has good logging so you can see it working in your system logs.
 
 All it requires from you are your domain name, e.g. `mydomain.com`, your DNS record name, e.g. `mydomain.com` or `sub.mydomain.com`, and a CloudFlare API token with the permissions of `Zone:Zone:Read` and `Zone:DNS:Edit`.
-
-It can also print logs in JSON for consumption by logging tools that process JSON. Just use the `--json` flag.
 
 `cloudflare-ddns` will attempt to resolve your public IP in the following order:
  1. Using OpenDNS
@@ -98,6 +96,11 @@ TBD
 
 ## Running Periodically with systemd
 TBD
+
+## Logging
+`cloudflare-ddns` has decent informational logging. It will output logs to stderr. A verbose option, `--verbose` or `-v` can be set to print additional debugging logs.
+
+It can also print logs in JSON for consumption by logging tools that process JSON. Just use the `--json` flag.
 
 ## Command-Line Usage
 ```
