@@ -30,7 +30,31 @@ $ cloudflare-ddns --domain mydomain.com --record sub.mydomain.com --token <cloud
 ```
 
 ## Installation
-Binaries can be downloaded from the GitHub Releases page. They are statically compiled and should run in any Linux distro.
+### As a Single Binary
+`cloudflare-ddns` is distributed as a single binary with no dependencies. Simply download the correct binary for your OS under [releases](https://github.com/mattolenik/cloudflare-ddns-client/releases), rename it to `cloudflare-ddns` and place it in a convenient location such as `/usr/local/bin`.
+
+If on Linux:
+```sh
+curl -sSLo /usr/local/bin/cloudflare-ddns $(curl -s https://api.github.com/repos/mattolenik/cloudflare-ddns-client/releases/latest | awk -F'"' '/browser_download_url.*linux-amd64/ {print $4}') && chmod +x /usr/local/bin/cloudflare-ddns
+```
+
+If on macOS:
+```sh
+curl -sSLo /usr/local/bin/cloudflare-ddns $(curl -s https://api.github.com/repos/mattolenik/cloudflare-ddns-client/releases/latest | awk -F'"' '/browser_download_url.*darwin-amd64/ {print $4}') && chmod +x /usr/local/bin/cloudflare-ddns
+```
+
+### Docker
+```
+docker pull mattolenik/cloudflare-ddns-client
+```
+
+See below for how to run with Docker.
+
+### Ubuntu PPA
+Coming soon.
+
+### MacOS HomeBrew
+Coming soon.
 
 ## Configuration
 
