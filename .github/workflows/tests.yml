@@ -37,7 +37,7 @@ jobs:
       - name: Publish Code Coverage
         uses: shogo82148/actions-goveralls@v1.4.2
         with:
-          path-to-profile: dist/coverage.cov
+          path-to-profile: dist/coverage.out
 
   test-windows:
     name: Tests on Windows
