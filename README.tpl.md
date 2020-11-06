@@ -11,7 +11,7 @@ All it requires from you are your domain name, e.g. `mydomain.com`, your DNS rec
  5. Using `https://wtfismyip.com/text`
 
 ## Usage
-```console
+```
 {{ run "go" "run" "main.go" "--help" }}
 ```
 
@@ -34,11 +34,11 @@ Example TOML configuration file:
 There is also a Docker image available for this client.
 
 With a configuration file:
-```console
+```sh
 docker run --rm -v /absolute/path/to/cloudflare-ddns.conf:/etc/cloudflare-ddns.conf mattolenik/cloudflare-ddns-client
 ```
 
 With a environment variables:
-```console
+```sh
 docker run --rm -e CLOUDFLARE_DDNS_DOMAIN=mydomain.com -e CLOUDFLARE_DDNS_RECORD=sub.mydomain.com -e CLOUDFLARE_DDNS_TOKEN=<your-cloudflare-api-token> mattolenik/cloudflare-ddns-client
 ```
