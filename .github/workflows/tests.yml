@@ -24,7 +24,7 @@ jobs:
       - name: Test
         run: make test coverage
       - name: Publish Test Results
-        uses: EnricoMi/publish-unit-test-result-action
+        uses: EnricoMi/publish-unit-test-result-action@master
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           check_name: Test Results on Ubuntu
@@ -52,7 +52,7 @@ jobs:
       - name: Test
         run: go test -v ./...
       - name: Publish Test Results
-        uses: EnricoMi/publish-unit-test-result-action
+        uses: EnricoMi/publish-unit-test-result-action@master
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           check_name: Test Results on Windows
