@@ -22,11 +22,38 @@ It can also print logs in JSON for consumption by logging tools that process JSO
  4. Using `https://ipecho.net/plain`
  5. Using `https://wtfismyip.com/text`
 
-## Example
+## Running It
+By passing in all required arguments:
 ```console
 $ cloudflare-ddns --domain mydomain.com --record sub.mydomain.com --token <cloudflare-api-token>
 11:16PM INF Found external IP '97.113.235.123'
 11:16PM INF DNS record 'sub.mydomain.com' is already set to IP '97.113.235.123'
+```
+
+If you have a config file set up (see below), no arguments are needed:
+```console
+$ cloudflare-ddns
+11:16PM INF Found external IP '97.113.235.123'
+11:16PM INF DNS record 'sub.mydomain.com' is already set to IP '97.113.235.123'
+```
+
+With environment variables:
+```console
+DOMAIN=mydomain.com RECORD=sub.mydomain.com TOKEN=<your-cloudflare-api-token> cloudflare-ddns
+11:16PM INF Found external IP '97.113.235.123'
+11:16PM INF DNS record 'sub.mydomain.com' is already set to IP '97.113.235.123'
+```
+
+### Running with Docker
+
+With a configuration file:
+```sh
+docker run --rm -v /path/to/cloudflare-ddns.conf:/etc/cloudflare-ddns.conf mattolenik/cloudflare-ddns-client
+```
+
+With environment variables:
+```sh
+docker run --rm -e DOMAIN=mydomain.com -e RECORD=sub.mydomain.com -e TOKEN=<your-cloudflare-api-token> mattolenik/cloudflare-ddns-client
 ```
 
 ## Installation
@@ -47,8 +74,6 @@ curl -sSLo /usr/local/bin/cloudflare-ddns $(curl -s https://api.github.com/repos
 ```
 docker pull mattolenik/cloudflare-ddns-client
 ```
-
-See below for how to run with Docker.
 
 ### Ubuntu PPA
 Coming soon.
@@ -77,33 +102,20 @@ record = "subdomain.example.com"
 token = "your-cloudflare-api-token-here"
 ```
 
-## Running with Docker
-There is also a Docker image available for this client.
+## Running Periodically with Cron
+TBD
 
-With a configuration file:
-```sh
-docker run --rm \
-  -v /absolute/path/to/cloudflare-ddns.conf:/etc/cloudflare-ddns.conf \
-  mattolenik/cloudflare-ddns-client
-```
-
-With environment variables:
-```sh
-docker run --rm \
-  -e CLOUDFLARE_DDNS_DOMAIN=mydomain.com \
-  -e CLOUDFLARE_DDNS_RECORD=sub.mydomain.com \
-  -e CLOUDFLARE_DDNS_TOKEN=<your-cloudflare-api-token> \
-  mattolenik/cloudflare-ddns-client
-```
+## Running Periodically with systemd
+TBD
 
 ## Command-Line Usage
 ```
 A dynamic DNS client for CloudFlare. Automatically detects your public IP and
 creates/updates a DNS record in CloudFlare.
 
-Configuration flags can be set by defining an environment variable of the same
-name but prefixed with `CLOUDFLARE_DDNS`.
-For example, `CLOUDFLARE_DDNS_DOMAIN=mydomain.com` can be used to set the domain flag.
+Configuration flags can be set by defining an environment variable of the same name.
+For example:
+DOMAIN=mydomain.com RECORD=sub.mydomain.com TOKEN=<api-token> cloudflare-ddns
 
 Usage:
   cloudflare-ddns [flags]

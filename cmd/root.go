@@ -25,9 +25,10 @@ var Root = &cobra.Command{
 	Long: `A dynamic DNS client for CloudFlare. Automatically detects your public IP and
 creates/updates a DNS record in CloudFlare.
 
-Configuration flags can be set by defining an environment variable of the same
-name but prefixed with ` + "`CLOUDFLARE_DDNS`." + `
-For example, ` + "`CLOUDFLARE_DDNS_DOMAIN=mydomain.com`" + ` can be used to set the domain flag.`,
+Configuration flags can be set by defining an environment variable of the same name.
+For example:
+` + "DOMAIN=mydomain.com RECORD=sub.mydomain.com TOKEN=<api-token> cloudflare-ddns" + `
+`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ip, err := ip.GetPublicIPWithRetry(5, 30*time.Second)
 		if err != nil {
@@ -77,7 +78,6 @@ func initConfig() {
 		viper.SetConfigName("cloudflare-ddns.toml")
 	}
 	viper.AutomaticEnv()
-	viper.SetEnvPrefix("CLOUDFLARE_DDNS")
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 
 	// Config file is optional, ignore errors
