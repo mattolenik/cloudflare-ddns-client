@@ -8,7 +8,7 @@
 
 ![License](https://img.shields.io/github/license/mattolenik/cloudflare-ddns-client?color=blue&label=License)
 
-# Better Dynamic DNS for Your Home Lab
+# Better Dynamic DNS for Your Home Lab or Self-Hosted Cloud
 This is a cross-platform DDNS client for CloudFlare, written in Go. It makes multiple attemps to retrieve your public IP, first using DNS and then several public APIs. It is well tested and very robust, and will make several retries before failing. It also has good logging so you can see it working in your system logs.
 
 All it requires from you are your domain name, e.g. `mydomain.com`, your DNS record name, e.g. `mydomain.com` or `sub.mydomain.com`, and a CloudFlare API token with the permissions of `Zone:Zone:Read` and `Zone:DNS:Edit`.
