@@ -12,12 +12,14 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+var apiURLs = []string{"http://whatismyip.akamai.com", "https://ipecho.net/plain", "https://wtfismyip.com/text"}
+
 // GetExternalIP tries to detect the external IP address of this machine. First using DNS, then using several public HTTP APIs.
 func GetExternalIP() (string, error) {
 	ip, success, errs := getExternalIPFromDNS()
 	if !success && len(errs) > 0 {
 		log.Warn().Msgf("failed to retrieve IP from DNS: %+v", errs)
-		ip, success, errs := getExternalIPFromAPIs()
+		ip, success, errs := getExternalIPFromAPIs(apiURLs...)
 		if !success && len(errs) > 0 {
 			return "", errors.Errorf("failed to retrieve IP from public API: %+v", errs)
 		} else if success && len(errs) > 0 {
@@ -58,13 +60,13 @@ func getExternalIPFromDNS() (string, bool, []error) {
 }
 
 // getExternalIPFromAPIs tries to detect the external IP address of this machine using several public HTTP APIs.
-func getExternalIPFromAPIs() (string, bool, []error) {
+// returns IP, success/fail, and one or more errors (one per API used)
+func getExternalIPFromAPIs(apiURLs ...string) (string, bool, []error) {
 	http.DefaultClient = &http.Client{
 		Timeout: 5 * time.Second,
 	}
 	failures := []error{}
-	httpURLs := []string{"http://whatismyip.akamai.com", "https://ipecho.net/plain", "https://wtfismyip.com/text"}
-	for _, url := range httpURLs {
+	for _, url := range apiURLs {
 		ip, err := getIPFromHTTP(url)
 		if err != nil {
 			failures = append(failures, errors.Trace(err))
@@ -82,9 +84,12 @@ func getIPFromHTTP(url string) (string, error) {
 		return "", errors.Annotatef(err, "HTTP GET '%s' failed", url)
 	}
 	if resp.StatusCode != 200 {
-		return "", errors.Annotatef(err, "HTTP GET '%s' failed with status %d", url, resp.Status)
+		return "", errors.Errorf("HTTP GET '%s' failed with status %s", url, resp.Status)
 	}
 	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", errors.Annotatef(err, "failed reading response body from '%s'", url)
+	}
 	ip := strings.TrimSpace(string(body))
 	if !isValidIP(ip) {
 		return "", errors.Errorf("IP address from '%s' is malformed", url)

@@ -35,16 +35,14 @@ $(DIST)/$(BIN_NAME)-shasums: all
 	cd $(DIST) && shasum -a 256 $(BIN_NAME)-* > $(BIN_NAME)-shasums
 
 install:
-	#go install -mod=vendor -ldflags="${LDFLAGS}"
 	go install -ldflags=$(LDFLAGS)
 
 readme: README.md
 README.md: README.tpl.md
 	go run tools/readmegen/main.go README.tpl.md > README.md
 
-test: $(GO_JUNIT_REPORT) build
+test:
 	go test -v "./..."
-	#@mkdir -p test
 
 
 .PHONY: clean install test
