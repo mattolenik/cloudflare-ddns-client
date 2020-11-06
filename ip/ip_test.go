@@ -23,7 +23,7 @@ func TestIPFromHTTPAPIs(t *testing.T) {
 		ips = append(ips, ip)
 	}
 	for _, ip := range ips {
-		assert.Equalf(ip, ips[0], "expected all IPs from all IPs to be the same, but found '%+v'", ips)
+		assert.Equalf(ip, ips[0], "expected all IPs from all APIs to be the same, but found '%+v'", ips)
 	}
 }
 
