@@ -5,8 +5,13 @@ on: [push, pull_request]
 jobs:
   test:
     name: Run Tests
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        platform: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.platform }}
     steps:
+      - name: Get uname
+        run: echo ::set-env name=UNAME::$(uname)
       - name: Install Go
         uses: actions/setup-go@v2
         with:
@@ -23,6 +28,6 @@ jobs:
           comment_title: Test Statistics
           hide_comments: all but latest
           comment_on_pr: true
-          files: dist/test-results.xml
+          files: dist/test-results-${{ env.UNAME }}.xml
           report_individual_runs: true
           deduplicate_classes_by_file_name: false
