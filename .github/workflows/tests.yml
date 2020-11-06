@@ -22,18 +22,23 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v2
       - name: Test
-        run: make test
+        run: make test coverage
       - name: Publish Test Results
-        uses: EnricoMi/publish-unit-test-result-action@v1.3
+        uses: EnricoMi/publish-unit-test-result-action
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          check_name: Test Results
+          check_name: Test Results on Ubuntu
           comment_title: Test Statistics
           hide_comments: all but latest
           comment_on_pr: true
           files: dist/test-results-${{ env.UNAME }}.xml
           report_individual_runs: true
           deduplicate_classes_by_file_name: false
+      - name: Publish Code Coverage
+        uses: shogo82148/actions-goveralls@v1.4.2
+        with:
+          path-to-profile: dist/coverage.cov
+
   test-windows:
     name: Tests on Windows
     runs-on: windows-latest
@@ -46,3 +51,14 @@ jobs:
         uses: actions/checkout@v2
       - name: Test
         run: go test -v ./...
+      - name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          check_name: Test Results on Windows
+          comment_title: Test Statistics
+          hide_comments: all but latest
+          comment_on_pr: true
+          files: dist/test-results-${{ env.UNAME }}.xml
+          report_individual_runs: true
+          deduplicate_classes_by_file_name: false

@@ -10,6 +10,7 @@ BIN_NAME       := cloudflare-ddns
 DIST           := dist
 UNAME          := $(shell uname)
 GOTESTSUM      := go run gotest.tools/gotestsum
+GOVERALLS      := go run github.com/mattn/goveralls
 
 SOURCE := $(shell find $(PROJECT_ROOT) -name '*.go')
 BINS   := $(shell find $(DIST) -name '$(BIN_NAME)-*')
@@ -47,5 +48,7 @@ test:
 	@mkdir -p $(DIST)
 	$(GOTESTSUM) --format testname --junitfile $(DIST)/test-results-$(UNAME).xml
 
+coverage:
+	go test -v -covermode=count -coverprofile=$(DIST)/coverage.out $(MODULE)/...
 
 .PHONY: clean install test
