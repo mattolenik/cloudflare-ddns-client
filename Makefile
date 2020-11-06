@@ -51,4 +51,15 @@ test:
 coverage:
 	go test -v -covermode=count -coverprofile=$(DIST)/coverage.out $(MODULE)/...
 
+# TODO: systemd init script
+fpm: $(DIST)/cloudflare-ddns-linux-amd64
+	@mkdir -p $(DIST)/fpm
+	cp $(DIST)/cloudflare-ddns-linux-amd64 $(DIST)/fpm/cloudflare-ddns
+	fpm -f -s dir -t deb -n cloudflare-ddns -v $(VERSION) --license Unlicense \
+	  --maintainer matt@olenik.me \
+	  --package $(DIST)/fpm/cloudflare-ddns.deb \
+	  --description "A robust, automatic dynamic DNS client for CloudFlare" \
+	  --config-files /etc/cloudflare-ddns.toml.example cloudflare-ddns.toml.example=/etc/ \
+	  $(DIST)/fpm/cloudflare-ddns=/usr/bin/
+
 .PHONY: clean install test
