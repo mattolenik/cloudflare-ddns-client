@@ -2,11 +2,14 @@
 [![Docker Tag](https://img.shields.io/docker/v/mattolenik/cloudflare-ddns-client?color=blue&label=Docker%20Tag&logo=docker&logoColor=white)](https://hub.docker.com/repository/docker/mattolenik/cloudflare-ddns-client)
 
 ![Functional Tests](https://img.shields.io/github/workflow/status/mattolenik/cloudflare-ddns-client/Functional%20Tests?label=Functional%20Tests)
+[![Code Coverage](https://img.shields.io/coveralls/github/mattolenik/cloudflare-ddns-client?label=Code%20Coverage)](https://coveralls.io/github/mattolenik/cloudflare-ddns-client?branch=main)
+
+![Platforms](https://img.shields.io/badge/Platforms-Linux%2C%20macOS%2C%20Windows%2C%20BSD-blue)
 
 ![License](https://img.shields.io/github/license/mattolenik/cloudflare-ddns-client?color=blue&label=License)
 
-# cloudflare-ddns-client
-This is a DDNS client for CloudFlare, written in Go. It makes multiple attemps to retrieve your public IP, first using DNS and then several public APIs. It is well tested and very robust, and will make several retries before failing.
+# CloudFlare DDNS Client
+This is a cross-platform DDNS client for CloudFlare, written in Go. It makes multiple attemps to retrieve your public IP, first using DNS and then several public APIs. It is well tested and very robust, and will make several retries before failing.
 
 All it requires from you are your domain name, e.g. `mydomain.com`, your DNS record name, e.g. `mydomain.com` or `sub.mydomain.com`, and a CloudFlare API token with the permissions of `Zone:Zone:Read` and `Zone:DNS:Edit`.
 
