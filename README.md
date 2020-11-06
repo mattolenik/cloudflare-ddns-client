@@ -13,8 +13,8 @@ All it requires from you are your domain name, e.g. `mydomain.com`, your DNS rec
 ## Example
 ```console
 $ cloudflare-ddns --domain mydomain.com --record sub.mydomain.com --token <cloudflare-api-token>
-[90m11:16PM[0m [32mINF[0m Found external IP '97.113.235.123'
-[90m11:16PM[0m [32mINF[0m DNS record 'sub.mydomain.com' is already set to IP '97.113.235.123'
+11:16PM INF Found external IP '97.113.235.123'
+11:16PM INF DNS record 'sub.mydomain.com' is already set to IP '97.113.235.123'
 ```
 
 ## Installation
