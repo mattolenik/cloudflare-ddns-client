@@ -1,10 +1,10 @@
-name: Run Tests
+name: Functional Tests
 
 on: [push, pull_request]
 
 jobs:
   test:
-    name: Run Tests
+    name: Tests on Ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Get uname
@@ -29,6 +29,7 @@ jobs:
           report_individual_runs: true
           deduplicate_classes_by_file_name: false
   test-windows:
+    name: Tests on Windows
     runs-on: windows-latest
     steps:
       - name: Install Go
