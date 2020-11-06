@@ -14,12 +14,32 @@ import (
 
 var apiURLs = []string{"http://whatismyip.akamai.com", "https://ipecho.net/plain", "https://wtfismyip.com/text"}
 
-// GetExternalIP tries to detect the external IP address of this machine. First using DNS, then using several public HTTP APIs.
-func GetExternalIP() (string, error) {
-	ip, success, errs := getExternalIPFromDNS()
+type dnsLookup struct {
+	// DNS server to dig
+	Address string
+	// Name of record
+	RecordName string
+	// Type of record, either A or TXT
+	RecordType string
+}
+
+var dnsLookupGoogle = dnsLookup{
+	Address:    "ns1.google.com:53",
+	RecordName: "o-o.myaddr.l.google.com",
+	RecordType: "TXT",
+}
+var dnsLookupOpenDNS = dnsLookup{
+	Address:    "resolver1.opendns.com:53",
+	RecordName: "myip.opendns.com",
+	RecordType: "A",
+}
+
+// GetPublicIP tries to detect the public IP address of this machine. First using DNS, then using several public HTTP APIs.
+func GetPublicIP() (string, error) {
+	ip, success, errs := getPublicIPFromDNS(dnsLookupOpenDNS, dnsLookupGoogle)
 	if !success && len(errs) > 0 {
 		log.Warn().Msgf("failed to retrieve IP from DNS: %+v", errs)
-		ip, success, errs := getExternalIPFromAPIs(apiURLs...)
+		ip, success, errs := getPublicIPFromAPIs(apiURLs...)
 		if !success && len(errs) > 0 {
 			return "", errors.Errorf("failed to retrieve IP from public API: %+v", errs)
 		} else if success && len(errs) > 0 {
@@ -40,28 +60,38 @@ func GetExternalIP() (string, error) {
 	return "", errors.New("unexpected error when retrieving IP with DNS, indicates a bug")
 }
 
-// getExternalIPFromDNS tries to detect the external IP address of this machine using DNS. First OpenDNS, then Google.
-func getExternalIPFromDNS() (string, bool, []error) {
-	errs := []error{}
-	success := false
-	ip, err := getIPFromOpenDNS()
-	if err != nil {
-		errs = append(errs, errors.Annotatef(err, "failed to retrieve IP from OpenDNS"))
-		ip, err = getIPFromGoogle()
-		if err != nil {
-			errs = append(errs, errors.Annotatef(err, "failed to retrieve IP from Google"))
-		} else {
-			success = true
-		}
-	} else {
-		success = true
+// getPublicIPFromDNS tries to detect the public IP address of this machine using DNS. First OpenDNS, then Google.
+func getPublicIPFromDNS(lookups ...dnsLookup) (string, bool, []error) {
+	if len(lookups) == 0 {
+		return "", false, []error{errors.New("expected at least one DNS lookup request")}
 	}
-	return ip, success, errs
+	errs := []error{}
+	for _, lookup := range lookups {
+		var record string
+		var err error
+		switch lookup.RecordType {
+		case "A":
+			record, err = getDNSARecord(lookup.Address, lookup.RecordName)
+		case "TXT":
+			record, err = getDNSTXTRecord(lookup.Address, lookup.RecordName)
+		default:
+			return "", false, []error{errors.Errorf("unsupported record type '%s'", lookup.RecordType)}
+		}
+		if err != nil {
+			errs = append(errs, errors.Annotatef(err, "DNS lookup of record '%s' at '%s' failed", lookup.RecordName, lookup.Address))
+			continue
+		}
+		if !isValidIP(record) {
+			errs = append(errs, errors.Errorf("invalid IP '%s' from DNS lookup of record '%s' at '%s'", record, lookup.RecordName, lookup.Address))
+		}
+		return record, true, nil
+	}
+	return "", false, errs
 }
 
-// getExternalIPFromAPIs tries to detect the external IP address of this machine using several public HTTP APIs.
+// getPublicIPFromAPIs tries to detect the public IP address of this machine using several public HTTP APIs.
 // returns IP, success/fail, and one or more errors (one per API used)
-func getExternalIPFromAPIs(apiURLs ...string) (string, bool, []error) {
+func getPublicIPFromAPIs(apiURLs ...string) (string, bool, []error) {
 	http.DefaultClient = &http.Client{
 		Timeout: 5 * time.Second,
 	}
@@ -97,13 +127,13 @@ func getIPFromHTTP(url string) (string, error) {
 	return ip, nil
 }
 
-// getIPFromGoogle gets the public IP from Google
-func getIPFromGoogle() (string, error) {
+// getDNSTXTRecord gets the public IP from a DNS TXT record
+func getDNSTXTRecord(addr, record string) (string, error) {
 	dig := dnsutil.Dig{}
-	dig.RemoteAddr = "ns1.google.com:53"
-	out, err := dig.TXT("o-o.myaddr.l.google.com")
+	dig.RemoteAddr = addr
+	out, err := dig.TXT(record)
 	if err != nil {
-		return "", errors.Annotate(err, "unable to dig for TXT record from Google DNS")
+		return "", errors.Annotatef(err, "unable to dig for TXT record '%s' from '%s'", record, addr)
 	}
 	if out == nil || len(out) != 1 {
 		return "", errors.Errorf("expected to find only 1 DNS record, found %d", len(out))
@@ -114,13 +144,13 @@ func getIPFromGoogle() (string, error) {
 	return out[0].Txt[0], nil
 }
 
-// getIPFromOpenDNS gets the public IP from OpenDNS
-func getIPFromOpenDNS() (string, error) {
+//  getDNSARecord gets a DNS A record
+func getDNSARecord(address, record string) (string, error) {
 	dig := dnsutil.Dig{}
-	dig.RemoteAddr = "resolver1.opendns.com:53"
-	out, err := dig.A("myip.opendns.com")
+	dig.RemoteAddr = address
+	out, err := dig.A(record)
 	if err != nil {
-		return "", errors.Annotate(err, "unable to dig A record from OpenDNS")
+		return "", errors.Annotatef(err, "unable to dig A record '%s' from '%s'", record, address)
 	}
 	if out == nil || len(out) != 1 {
 		return "", errors.Errorf("expected to find only 1 DNS record, found %d", len(out))

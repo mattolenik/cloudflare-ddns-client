@@ -28,11 +28,11 @@ Configuration flags can be set by defining an environment variable of the same
 name but prefixed with ` + "`CLOUDFLARE_DDNS`." + `
 For example, ` + "`CLOUDFLARE_DDNS_DOMAIN=mydomain.com`" + ` can be used to set the domain flag.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		ip, err := ip.GetExternalIP()
+		ip, err := ip.GetPublicIP()
 		if err != nil {
-			return errors.Annotate(err, "unable to retrieve external IP")
+			return errors.Annotate(err, "unable to retrieve public IP")
 		}
-		log.Info().Msgf("Found external IP '%s'", ip)
+		log.Info().Msgf("Found public IP '%s'", ip)
 		return dns.UpdateCloudFlare(
 			viper.GetString(conf.Token),
 			viper.GetString(conf.Domain),
