@@ -68,17 +68,23 @@ Example TOML configuration file:
 {{ run "cat" "cloudflare-ddns.toml.example" }}
 ```
 
-### Running with Docker
+## Running with Docker
 There is also a Docker image available for this client.
 
 With a configuration file:
 ```sh
-docker run --rm -v /absolute/path/to/cloudflare-ddns.conf:/etc/cloudflare-ddns.conf mattolenik/cloudflare-ddns-client
+docker run --rm \
+  -v /absolute/path/to/cloudflare-ddns.conf:/etc/cloudflare-ddns.conf \
+  mattolenik/cloudflare-ddns-client
 ```
 
-With a environment variables:
+With environment variables:
 ```sh
-docker run --rm -e CLOUDFLARE_DDNS_DOMAIN=mydomain.com -e CLOUDFLARE_DDNS_RECORD=sub.mydomain.com -e CLOUDFLARE_DDNS_TOKEN=<your-cloudflare-api-token> mattolenik/cloudflare-ddns-client
+docker run --rm \
+  -e CLOUDFLARE_DDNS_DOMAIN=mydomain.com \
+  -e CLOUDFLARE_DDNS_RECORD=sub.mydomain.com \
+  -e CLOUDFLARE_DDNS_TOKEN=<your-cloudflare-api-token> \
+  mattolenik/cloudflare-ddns-client
 ```
 
 ## Command-Line Usage
