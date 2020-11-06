@@ -42,7 +42,7 @@ func GetPublicIPWithRetry(numRetries int, delay time.Duration) (string, error) {
 		if err == nil {
 			return ip, nil
 		}
-		log.Warn().Msgf("failed to retrieve public IP, attempt #%d, retrying in %d", i+1, delay.String())
+		log.Warn().Msgf("failed to retrieve public IP, attempt #%d, retrying in %s", i+1, delay.String())
 		time.Sleep(delay)
 	}
 	return "", errors.Errorf("failed to retrieve public IP after %d attempts", i)
