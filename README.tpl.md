@@ -106,3 +106,16 @@ It can also print logs in JSON for consumption by logging tools that process JSO
 ```
 {{ run "go" "run" "main.go" "--help" }}
 ```
+
+## Development
+
+### Running Tests
+`cloudflare-ddns` has a suite of integration tests that actually run the real program against a real CloudFlare account to verify functionality.
+
+To run these tests, the following environment variables must be present at the time that `make test` is run:
+ * `CLOUDFLARE_TOKEN` an API token with the usual `Zone:Zone:Read` and `Zone:DNS:Edit` permissions
+ * `TEST_DOMAIN` the domain name in your CloudFlare account where the test records will be placed
+ 
+ When forking this repo you should store these as GitHub Secrets within your repository. The Actions test job will retrieve those secrets and populate the environment variables for you.
+
+ The tests will create new records and clean them up when finished.
