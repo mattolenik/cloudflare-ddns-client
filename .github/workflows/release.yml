@@ -11,10 +11,6 @@ jobs:
     name: Create Release
     runs-on: ubuntu-latest
     steps:
-      - name: Get CloudFlare Token
-        run: echo ::set-env name=CLOUDFLARE_TOKEN::${{ secrets.CLOUDFLARE_TOKEN }}
-      - name: Get Test Domain Name
-        run: echo ::set-env name=TEST_DOMAIN::${{ secrets.TEST_DOMAIN }}
       - name: Install Go
         uses: actions/setup-go@v2
         with:
@@ -24,6 +20,10 @@ jobs:
         run: echo ::set-env name=RELEASE_VERSION::$(echo ${GITHUB_REF:10})
       - name: Checkout code
         uses: actions/checkout@v2
+      - name: Get CloudFlare Token
+        run: echo ::set-env name=CLOUDFLARE_TOKEN::${{ secrets.CLOUDFLARE_TOKEN }}
+      - name: Get Test Domain Name
+        run: echo ::set-env name=TEST_DOMAIN::${{ secrets.TEST_DOMAIN }}
       - name: Test and Build
         run: make test all shasums
       - name: Release
