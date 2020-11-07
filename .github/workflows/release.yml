@@ -10,6 +10,7 @@ jobs:
   build:
     name: Create Release
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Install Go
         uses: actions/setup-go@v2

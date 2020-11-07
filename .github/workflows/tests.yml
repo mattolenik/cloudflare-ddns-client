@@ -16,6 +16,7 @@ jobs:
   test:
     name: Tests on Ubuntu
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Get uname
         run: echo ::set-env name=UNAME::$(uname)
@@ -50,6 +51,7 @@ jobs:
   test-windows:
     name: Tests on Windows
     runs-on: windows-latest
+    timeout-minutes: 10
     steps:
       - name: Install Go
         uses: actions/setup-go@v2
