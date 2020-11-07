@@ -110,7 +110,7 @@ It can also print logs in JSON for consumption by logging tools that process JSO
 ## Development
 
 ### Running Tests
-`cloudflare-ddns` has a suite of integration tests that actually run the real program against a real CloudFlare account to verify functionality.
+`cloudflare-ddns` has a suite of end-to-end tests that actually run the real program against a real CloudFlare account to verify functionality.
 
 To run these tests, the following environment variables must be present at the time that `make test` is run:
  * `CLOUDFLARE_TOKEN` an API token with the usual `Zone:Zone:Read` and `Zone:DNS:Edit` permissions

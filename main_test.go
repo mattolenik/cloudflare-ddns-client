@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type IntegrationSuite struct {
+type EndToEndSuite struct {
 	suite.Suite
 	Token      string
 	ZoneID     string
@@ -27,22 +27,22 @@ type IntegrationSuite struct {
 	TestBinary string
 }
 
-func TestIntegrationSuite(t *testing.T) {
+func TestEndToEndSuite(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
-	suite.Run(t, new(IntegrationSuite))
+	suite.Run(t, new(EndToEndSuite))
 }
 
-func (s *IntegrationSuite) SetupSuite() {
+func (s *EndToEndSuite) SetupSuite() {
 	require := s.Require()
 	var err error
 	s.TestBinary = os.Getenv("TEST_BINARY")
-	require.NotEmpty(s.TestBinary, "Integration tests require compiled binary of cloudflare-ddns at path specified by TEST_BINARY")
+	require.NotEmpty(s.TestBinary, "End-to-end tests require compiled binary of cloudflare-ddns at path specified by TEST_BINARY")
 
 	s.Token = os.Getenv("CLOUDFLARE_TOKEN")
-	require.NotEmpty(s.Token, "Integration tests require an API token specified by the CLOUDFLARE_TOKEN env var")
+	require.NotEmpty(s.Token, "End-to-end tests require an API token specified by the CLOUDFLARE_TOKEN env var")
 
 	s.Domain = os.Getenv("TEST_DOMAIN")
-	require.NotEmpty(s.Domain, "Integration tests require a domain specified by the TEST_DOMAIN env var")
+	require.NotEmpty(s.Domain, "End-to-end tests require a domain specified by the TEST_DOMAIN env var")
 
 	s.IP, err = ip.GetPublicIP()
 	require.NoError(err, "unable to get public IP for tests")
@@ -60,7 +60,7 @@ func (s *IntegrationSuite) SetupSuite() {
 	require.NoErrorf(err, "Failed to get zone ID, error: %+v", err)
 }
 
-func (s *IntegrationSuite) TestWithConfigFile() {
+func (s *EndToEndSuite) TestWithConfigFile() {
 	assert := s.Assert()
 	require := s.Require()
 
@@ -82,7 +82,7 @@ func (s *IntegrationSuite) TestWithConfigFile() {
 	assert.True(s.ipMatches(record), "Expected IP to have been updated")
 }
 
-func (s *IntegrationSuite) TestWithArguments() {
+func (s *EndToEndSuite) TestWithArguments() {
 	assert := s.Assert()
 	require := s.Require()
 
@@ -95,7 +95,7 @@ func (s *IntegrationSuite) TestWithArguments() {
 	assert.True(s.ipMatches(record), "Expected IP to have been updated")
 }
 
-func (s *IntegrationSuite) TestExistingRecord() {
+func (s *EndToEndSuite) TestExistingRecord() {
 	assert := s.Assert()
 	require := s.Require()
 
@@ -108,7 +108,7 @@ func (s *IntegrationSuite) TestExistingRecord() {
 	assert.True(s.ipMatches(record), "Expected IP to have been updated")
 }
 
-func (s *IntegrationSuite) TestWithEnvVars() {
+func (s *EndToEndSuite) TestWithEnvVars() {
 	assert := s.Assert()
 	require := s.Require()
 
@@ -121,21 +121,21 @@ func (s *IntegrationSuite) TestWithEnvVars() {
 	assert.True(s.ipMatches(record), "Expected IP to have been updated")
 }
 
-func (s *IntegrationSuite) deleteRecord(record string) {
+func (s *EndToEndSuite) deleteRecord(record string) {
 	r, err := s.getDNSRecordByName(record)
 	s.Assert().NoErrorf(err, "Could not find DNS record of name '%s' in zone ID '%s', cannot clean up", record, s.ZoneID)
 	err = s.CF.DeleteDNSRecord(s.ZoneID, r.ID)
 	s.Assert().NoErrorf(err, "Failed to remove DNS record of name '%s' in zone ID '%s'", record, s.ZoneID)
 }
 
-func (s *IntegrationSuite) ipMatches(record string) bool {
+func (s *EndToEndSuite) ipMatches(record string) bool {
 	r, err := s.getDNSRecordByName(record)
 	s.Require().NotNilf(r, "Expected record for '%s' to be not nil", record)
 	s.Require().NoError(err, "Failed to get record ID of '%s'", record)
 	return r.Content == s.IP
 }
 
-func (s *IntegrationSuite) getDNSRecordByName(record string) (*cloudflare.DNSRecord, error) {
+func (s *EndToEndSuite) getDNSRecordByName(record string) (*cloudflare.DNSRecord, error) {
 	records, err := s.CF.DNSRecords(s.ZoneID, cloudflare.DNSRecord{Type: "A"})
 	if err != nil {
 		return nil, errors.Trace(err)
@@ -148,7 +148,7 @@ func (s *IntegrationSuite) getDNSRecordByName(record string) (*cloudflare.DNSRec
 	return nil, errors.NotFoundf("no record '%s' found in zone ID '%s'", record, s.ZoneID)
 }
 
-func (s *IntegrationSuite) createRandomDNSRecord(ip string) string {
+func (s *EndToEndSuite) createRandomDNSRecord(ip string) string {
 	record := s.randomDNSRecord()
 	_, err := s.CF.CreateDNSRecord(s.ZoneID, cloudflare.DNSRecord{
 		Content: ip,
@@ -159,11 +159,11 @@ func (s *IntegrationSuite) createRandomDNSRecord(ip string) string {
 	return record
 }
 
-func (s *IntegrationSuite) randomDNSRecord() string {
-	return fmt.Sprintf("ddns-integration-test-%d.%s", rand.Intn(999999)+100000, s.Domain)
+func (s *EndToEndSuite) randomDNSRecord() string {
+	return fmt.Sprintf("ddns-e2e-test-%d.%s", rand.Intn(999999)+100000, s.Domain)
 }
 
-func (s *IntegrationSuite) runProgram(envVars []string, args ...string) (string, error) {
+func (s *EndToEndSuite) runProgram(envVars []string, args ...string) (string, error) {
 	cmd := exec.Command(s.TestBinary, args...)
 	cmd.Env = envVars
 	out, err := cmd.CombinedOutput()
