@@ -3,7 +3,7 @@ module github.com/mattolenik/cloudflare-ddns-client
 go 1.15
 
 require (
-	github.com/cloudflare/cloudflare-go v0.13.4
+	github.com/cloudflare/cloudflare-go v0.13.5-0.20201106134004-20fc9bf7171e
 	github.com/juju/errors v0.0.0-20200330140219-3fe23663418f
 	github.com/juju/testing v0.0.0-20201030020617-7189b3728523 // indirect
 	github.com/lixiangzhong/dnsutil v0.0.0-20191203032812-75ad39d2945a
@@ -19,7 +19,6 @@ require (
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.6.1
 	golang.org/x/crypto v0.0.0-20201016220609-9e8e0b390897 // indirect
-	golang.org/x/net v0.0.0-20201031054903-ff519b6c9102 // indirect
 	golang.org/x/sys v0.0.0-20201106081118-db71ae66460a // indirect
 	golang.org/x/text v0.3.4 // indirect
 	golang.org/x/tools v0.0.0-20201105220310-78b158585360 // indirect

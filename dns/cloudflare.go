@@ -37,7 +37,7 @@ func UpdateCloudFlare(token, domain, record, ip string) error {
 	}
 	// Create the record if it's not already there
 	if recordID == "" {
-		log.Info().Msgf("No DNS '%s' found for domain '%s', creating now", record, domain)
+		log.Info().Msgf("No DNS record '%s' found for domain '%s', creating now", record, domain)
 		resp, err := api.CreateDNSRecord(zoneID, cloudflare.DNSRecord{
 			Content: ip,
 			Type:    "A",
