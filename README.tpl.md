@@ -1,12 +1,12 @@
 [![GitHub Release](https://img.shields.io/github/v/release/mattolenik/cloudflare-ddns-client?label=Release&logo=github&logoColor=white)](https://github.com/mattolenik/cloudflare-ddns-client/releases)
 [![Docker Tag](https://img.shields.io/docker/v/mattolenik/cloudflare-ddns-client?color=blue&label=Docker%20Tag&logo=docker&logoColor=white)](https://hub.docker.com/repository/docker/mattolenik/cloudflare-ddns-client)
 
-![Tests](https://img.shields.io/github/workflow/status/mattolenik/cloudflare-ddns-client/Tests?label=Tests)
+[![Tests](https://img.shields.io/github/workflow/status/mattolenik/cloudflare-ddns-client/Tests?label=Tests)](https://github.com/mattolenik/cloudflare-ddns-client/actions?query=workflow%3ATests)
 [![Code Coverage](https://img.shields.io/coveralls/github/mattolenik/cloudflare-ddns-client?label=Code%20Coverage)](https://coveralls.io/github/mattolenik/cloudflare-ddns-client?branch=main)
 
 ![Platforms](https://img.shields.io/badge/Platforms-Linux%2C%20macOS%2C%20Windows%2C%20BSD-blue)
 
-![License](https://img.shields.io/github/license/mattolenik/cloudflare-ddns-client?color=blue&label=License)
+[![License](https://img.shields.io/github/license/mattolenik/cloudflare-ddns-client?color=blue&label=License)](https://unlicense.org)
 
 # Better Dynamic DNS for Your Home Lab or Self-Hosted Cloud
 This is a cross-platform DDNS client for CloudFlare, written in Go. It makes multiple attemps to retrieve your public IP, first using DNS and then several public APIs. It is well tested with a full end-to-end test suite that actually verifies functionality against CloudFlare. It also has good logging so you can see it working in your system logs.
