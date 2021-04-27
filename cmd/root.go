@@ -3,13 +3,11 @@ package cmd
 import (
 	"os"
 	"strings"
-	"time"
 
 	"github.com/juju/errors"
 	"github.com/mattolenik/cloudflare-ddns-client/conf"
-	"github.com/mattolenik/cloudflare-ddns-client/dns"
+	"github.com/mattolenik/cloudflare-ddns-client/ddns"
 	"github.com/mattolenik/cloudflare-ddns-client/errhandler"
-	"github.com/mattolenik/cloudflare-ddns-client/ip"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -30,16 +28,7 @@ For example:
 ` + "DOMAIN=mydomain.com RECORD=sub.mydomain.com TOKEN=<api-token> cloudflare-ddns" + `
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		ip, err := ip.GetPublicIPWithRetry(5, 30*time.Second)
-		if err != nil {
-			return errors.Annotate(err, "unable to retrieve public IP")
-		}
-		log.Info().Msgf("Found public IP '%s'", ip)
-		return dns.UpdateCloudFlare(
-			viper.GetString(conf.Token),
-			viper.GetString(conf.Domain),
-			viper.GetString(conf.Record),
-			ip)
+		return errors.Trace(ddns.Run())
 	},
 	Version: conf.Version,
 }
