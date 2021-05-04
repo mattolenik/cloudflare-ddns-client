@@ -1,6 +1,6 @@
 module github.com/mattolenik/cloudflare-ddns-client
 
-go 1.15
+go 1.16
 
 require (
 	github.com/cloudflare/cloudflare-go v0.13.5-0.20201106134004-20fc9bf7171e
