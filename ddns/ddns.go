@@ -1,6 +1,7 @@
 package ddns
 
 import (
+	"context"
 	"time"
 
 	"github.com/juju/errors"
@@ -11,13 +12,14 @@ import (
 	"github.com/spf13/viper"
 )
 
-func Run() error {
+func Run(ctx context.Context) error {
 	ip, err := ip.GetPublicIPWithRetry(10, 5*time.Second)
 	if err != nil {
 		return errors.Annotate(err, "unable to retrieve public IP")
 	}
 	log.Info().Msgf("Found public IP '%s'", ip)
 	err = dns.UpdateCloudFlare(
+		ctx,
 		viper.GetString(conf.Token),
 		viper.GetString(conf.Domain),
 		viper.GetString(conf.Record),
@@ -25,19 +27,19 @@ func Run() error {
 	return errors.Trace(err)
 }
 
-func Daemon() error {
+func Daemon(ctx context.Context) error {
 	updatePeriod := 10 * time.Second
 	failureRetryDelay := updatePeriod
 
 	var lastIP string
 	var lastIPUpdate time.Time
 
-	log.Info().Msgf("Daemon running, will now monitor for IP updates every %d seconds", updatePeriod.Seconds())
+	log.Info().Msgf("Daemon running, will now monitor for IP updates every %d seconds", int(updatePeriod.Seconds()))
 
 	for {
 		newIP, err := ip.GetPublicIPWithRetry(10, 5*time.Second)
 		if err != nil {
-			log.Error().Msgf("unable to retrieve public IP, will retry in %d seconds", updatePeriod.Seconds())
+			log.Error().Msgf("unable to retrieve public IP, will retry in %d seconds", int(updatePeriod.Seconds()))
 			time.Sleep(failureRetryDelay)
 			continue
 		}
@@ -45,7 +47,7 @@ func Daemon() error {
 			log.Info().Msgf(
 				"No IP change detected since %s (%d seconds ago)",
 				lastIPUpdate.Format(time.RFC1123Z),
-				time.Now().Sub(lastIPUpdate).Seconds())
+				int(time.Now().Sub(lastIPUpdate).Seconds()))
 			time.Sleep(updatePeriod)
 			continue
 		}
@@ -58,6 +60,7 @@ func Daemon() error {
 		lastIPUpdate = time.Now()
 
 		err = dns.UpdateCloudFlare(
+			ctx,
 			viper.GetString(conf.Token),
 			viper.GetString(conf.Domain),
 			viper.GetString(conf.Record),

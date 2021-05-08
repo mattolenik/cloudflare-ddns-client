@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -25,6 +26,7 @@ type EndToEndSuite struct {
 	IP         string
 	CF         *cloudflare.API
 	TestBinary string
+	ctx        context.Context
 }
 
 func TestEndToEndSuite(t *testing.T) {
@@ -33,6 +35,7 @@ func TestEndToEndSuite(t *testing.T) {
 }
 
 func (s *EndToEndSuite) SetupSuite() {
+	s.ctx = context.Background()
 	require := s.Require()
 	var err error
 	s.TestBinary = os.Getenv("TEST_BINARY")
@@ -53,7 +56,7 @@ func (s *EndToEndSuite) SetupSuite() {
 	}
 
 	// Verify token before tests start
-	_, err = s.CF.VerifyAPIToken()
+	_, err = s.CF.VerifyAPIToken(s.ctx)
 	require.NoError(err, "CloudFlare token is not valid")
 
 	s.ZoneID, err = s.CF.ZoneIDByName(s.Domain)
@@ -124,7 +127,7 @@ func (s *EndToEndSuite) TestWithEnvVars() {
 func (s *EndToEndSuite) deleteRecord(record string) {
 	r, err := s.getDNSRecordByName(record)
 	s.Assert().NoErrorf(err, "Could not find DNS record of name '%s' in zone ID '%s', cannot clean up", record, s.ZoneID)
-	err = s.CF.DeleteDNSRecord(s.ZoneID, r.ID)
+	err = s.CF.DeleteDNSRecord(s.ctx, s.ZoneID, r.ID)
 	s.Assert().NoErrorf(err, "Failed to remove DNS record of name '%s' in zone ID '%s'", record, s.ZoneID)
 }
 
@@ -136,7 +139,7 @@ func (s *EndToEndSuite) ipMatches(record string) bool {
 }
 
 func (s *EndToEndSuite) getDNSRecordByName(record string) (*cloudflare.DNSRecord, error) {
-	records, err := s.CF.DNSRecords(s.ZoneID, cloudflare.DNSRecord{Type: "A"})
+	records, err := s.CF.DNSRecords(s.ctx, s.ZoneID, cloudflare.DNSRecord{Type: "A"})
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
@@ -150,7 +153,7 @@ func (s *EndToEndSuite) getDNSRecordByName(record string) (*cloudflare.DNSRecord
 
 func (s *EndToEndSuite) createRandomDNSRecord(ip string) string {
 	record := s.randomDNSRecord()
-	_, err := s.CF.CreateDNSRecord(s.ZoneID, cloudflare.DNSRecord{
+	_, err := s.CF.CreateDNSRecord(s.ctx, s.ZoneID, cloudflare.DNSRecord{
 		Content: ip,
 		Type:    "A",
 		Name:    record,

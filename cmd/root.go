@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"os"
 	"strings"
 
@@ -28,7 +29,7 @@ For example:
 ` + "DOMAIN=mydomain.com RECORD=sub.mydomain.com TOKEN=<api-token> cloudflare-ddns" + `
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return errors.Trace(ddns.Run())
+		return errors.Trace(ddns.Run(context.Background()))
 	},
 	Version: conf.Version,
 }

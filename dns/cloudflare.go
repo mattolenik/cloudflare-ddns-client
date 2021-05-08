@@ -1,13 +1,15 @@
 package dns
 
 import (
+	"context"
+
 	"github.com/cloudflare/cloudflare-go"
 	"github.com/juju/errors"
 	"github.com/rs/zerolog/log"
 )
 
 // UpdateCloudFlare updates the CloudFlare DNS record
-func UpdateCloudFlare(token, domain, record, ip string) error {
+func UpdateCloudFlare(ctx context.Context, token, domain, record, ip string) error {
 	api, err := cloudflare.NewWithAPIToken(token)
 	if err != nil {
 		return errors.Annotate(err, "unable to connect to CloudFlare, token may be invalid")
@@ -18,7 +20,7 @@ func UpdateCloudFlare(token, domain, record, ip string) error {
 		return errors.Annotatef(err, "unable to retrieve zone ID for domain '%s' from CloudFlare", domain)
 	}
 	// Get the record ID
-	records, err := api.DNSRecords(zoneID, cloudflare.DNSRecord{Type: "A"})
+	records, err := api.DNSRecords(ctx, zoneID, cloudflare.DNSRecord{Type: "A"})
 	if err != nil {
 		return errors.Annotate(err, "unable to retrieve zone ID from CloudFlare")
 	}
@@ -38,7 +40,7 @@ func UpdateCloudFlare(token, domain, record, ip string) error {
 	// Create the record if it's not already there
 	if recordID == "" {
 		log.Info().Msgf("No DNS record '%s' found for domain '%s', creating now", record, domain)
-		resp, err := api.CreateDNSRecord(zoneID, cloudflare.DNSRecord{
+		resp, err := api.CreateDNSRecord(ctx, zoneID, cloudflare.DNSRecord{
 			Content: ip,
 			Type:    "A",
 			Name:    record,
@@ -49,7 +51,7 @@ func UpdateCloudFlare(token, domain, record, ip string) error {
 		recordID = resp.Result.ID
 	}
 	// Update the record
-	err = api.UpdateDNSRecord(zoneID, recordID, cloudflare.DNSRecord{
+	err = api.UpdateDNSRecord(ctx, zoneID, recordID, cloudflare.DNSRecord{
 		Content: ip,
 		Type:    "A",
 	})

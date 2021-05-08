@@ -87,7 +87,7 @@ func TestIPFromDNS_WithFailure(t *testing.T) {
 		dnsLookup{
 			Address:    dnsLookupOpenDNS.Address,
 			RecordName: dnsLookupOpenDNS.RecordName,
-			RecordType: "TXT",
+			RecordType: "A",
 		},
 		dnsLookupOpenDNS,
 	)
@@ -98,7 +98,7 @@ func TestIPFromDNS_WithFailure(t *testing.T) {
 	ipGoogle, success, errs := getPublicIPFromDNS(dnsLookupGoogle)
 	assert.Truef(success, "expected success getting IP from Google")
 	assert.Emptyf(errs, "expected no error getting IP from Google")
-	assert.Truef(isValidIP(ipOpenDNS), "expected IP from  Google'%s' to be valid", ipGoogle)
+	assert.Truef(isValidIP(ipGoogle), "expected IP from Google '%s' to be valid", ipGoogle)
 }
 
 func TestIPFromDNSAndAPIsAgree(t *testing.T) {
