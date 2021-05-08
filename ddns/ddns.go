@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/viper"
 )
 
+// Run performs a one time DDNS update.
 func Run(ctx context.Context) error {
 	ip, err := ip.GetPublicIPWithRetry(10, 5*time.Second)
 	if err != nil {
@@ -27,10 +28,18 @@ func Run(ctx context.Context) error {
 	return errors.Trace(err)
 }
 
-func Daemon(ctx context.Context) error {
-	updatePeriod := 10 * time.Second
-	failureRetryDelay := updatePeriod
+// DaemonWithDefaults calls Daemon but with default values
+// updatePeriod      - 10 seconds
+// failureRetryDelay - 10 seconds
+func DaemonWithDefaults(ctx context.Context) error {
+	d := 10 * time.Second
+	return errors.Trace(Daemon(ctx, d, d))
+}
 
+// Daemon continually keeps DDNS up to date.
+// updatePeriod      - how often to check for updates
+// failureRetryDelay - how long to wait until retry after a failure
+func Daemon(ctx context.Context, updatePeriod, failureRetryDelay time.Duration) error {
 	var lastIP string
 	var lastIPUpdate time.Time
 
