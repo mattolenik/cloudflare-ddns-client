@@ -56,7 +56,7 @@ func Daemon(ctx context.Context, updatePeriod, failureRetryDelay time.Duration) 
 			log.Info().Msgf(
 				"No IP change detected since %s (%d seconds ago)",
 				lastIPUpdate.Format(time.RFC1123Z),
-				int(time.Now().Sub(lastIPUpdate).Seconds()))
+				int(time.Since(lastIPUpdate).Seconds()))
 			time.Sleep(updatePeriod)
 			continue
 		}

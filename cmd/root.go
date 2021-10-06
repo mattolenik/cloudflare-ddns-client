@@ -29,6 +29,9 @@ For example:
 ` + "DOMAIN=mydomain.com RECORD=sub.mydomain.com TOKEN=<api-token> cloudflare-ddns" + `
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if viper.GetBool(conf.Daemon) {
+			return errors.Trace(ddns.DaemonWithDefaults(context.Background()))
+		}
 		return errors.Trace(ddns.Run(context.Background()))
 	},
 	Version: conf.Version,
@@ -41,6 +44,7 @@ func init() {
 	Root.PersistentFlags().String(conf.Token, "", "CloudFlare API token with permissions Zone:Zone:Read and Zone:DNS:Edit")
 	Root.PersistentFlags().Bool(conf.JSONOutput, false, "Log format, either pretty or json, defaults to pretty")
 	Root.PersistentFlags().BoolP(conf.Verbose, conf.VerboseShort, false, "Verbose logging, prints additional log output")
+	Root.PersistentFlags().Bool(conf.Daemon, false, "Run as a service, continually monitoring for DNS changes")
 	Root.SetVersionTemplate("{{.Version}}\n")
 
 	viper.BindPFlag(conf.Config, Root.PersistentFlags().Lookup(conf.Config))

@@ -9,6 +9,8 @@ var ModuleName string
 var (
 	// Config is the path to the config file, if present
 	Config = "config"
+	// Daemon is the flag for enabling daemon mode
+	Daemon = "daemon"
 	// Domain is the domain to update within CloudFlare
 	Domain = "domain"
 	// Record is the DNS record to update within CloudFlare, may be same as Domain or a subdomain
