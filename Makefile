@@ -3,8 +3,6 @@
 MODULE               := $(shell awk 'NR==1{print $$2}' go.mod)
 REPO_NAME            := cloudflare-ddns
 VERSION              := $(shell echo $$(ver=$$(git tag -l --points-at HEAD) && [ -z $$ver ] && ver=$$(git describe --always --dirty); printf $$ver))
-# This is set during CI in .github/workflows/release.yml
-RELEASE_VERSION      ?= $(VERSION)
 LDFLAGS              := -s -w -X $(MODULE)/conf.Version=$(VERSION) -X $(MODULE)/conf.ModuleName=$(MODULE)
 FLAGS                := -trimpath
 PROJECT_ROOT         := $(shell cd -P -- '$(shell dirname -- "$0")' && pwd -P)
@@ -20,11 +18,13 @@ DOCKER_PLATFORMS     ?= linux/amd64 linux/arm64
 DOCKER_REPO          ?= mattolenik
 DOCKER_TAG           ?= $(DOCKER_REPO)/cloudflare-ddns-client
 DOCKER_TAG_LATEST    := $(DOCKER_TAG):latest
-DOCKER_TAG_VERSIONED := $(DOCKER_TAG):$(RELEASE_VERSION)
+DOCKER_TAG_VERSIONED := $(DOCKER_TAG):$(VERSION)
+export TEST_BINARY   := $(DIST)/$(BIN_NAME)
 
-export TEST_BINARY := $(DIST)/$(BIN_NAME)
+default: check-version all shasums readme test
 
-default: all shasums readme test
+check-version:
+	if [ -z "$(VERSION)" ]; then echo "VERSION variable must be set"; exit 1; fi
 
 build: $(DIST)/$(BIN_NAME)
 $(DIST)/$(BIN_NAME): $(SOURCE)
@@ -32,7 +32,7 @@ $(DIST)/$(BIN_NAME): $(SOURCE)
 
 all: $(addprefix $(DIST)/$(BIN_NAME)-,$(PLATFORMS))
 
-docker-publish:
+docker-publish: check-version
 	docker buildx build --push --tag $(DOCKER_TAG_LATEST) --tag $(DOCKER_TAG_VERSIONED) --platform linux/amd64,linux/arm64 .
 
 clean:
