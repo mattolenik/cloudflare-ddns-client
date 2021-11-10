@@ -7,7 +7,7 @@ require (
 	github.com/juju/errors v0.0.0-20210818161939-5560c4c073ff
 	github.com/juju/testing v0.0.0-20201030020617-7189b3728523 // indirect
 	github.com/lixiangzhong/dnsutil v1.4.0
-	github.com/miekg/dns v1.1.43 // indirect
+	github.com/miekg/dns v1.1.43
 	github.com/rs/zerolog v1.26.0
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/viper v1.9.0
