@@ -3,7 +3,7 @@
 MODULE               := $(shell awk 'NR==1{print $$2}' go.mod)
 REPO_NAME            := cloudflare-ddns
 VERSION              := $(shell echo $$(ver=$$(git tag -l --points-at HEAD) && [ -z $$ver ] && ver=$$(git describe --always --dirty); printf $$ver))
-LDFLAGS              := -s -w -X $(MODULE)/conf.Version=$(VERSION) -X $(MODULE)/conf.ModuleName=$(MODULE)
+LDFLAGS              := -s -w -X $(MODULE)/meta.Version=$(VERSION) -X $(MODULE)/meta.ModuleName=$(MODULE)
 FLAGS                := -trimpath
 PROJECT_ROOT         := $(shell cd -P -- '$(shell dirname -- "$0")' && pwd -P)
 BIN_NAME             := cloudflare-ddns

@@ -6,6 +6,7 @@ import (
 
 	"github.com/juju/errors"
 	"github.com/mattolenik/cloudflare-ddns-client/conf"
+	"github.com/mattolenik/cloudflare-ddns-client/meta"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 )
@@ -16,11 +17,11 @@ func Handle(err error) {
 		return
 	}
 	msg := errors.ErrorStack(err)
-	if conf.ModuleName != "" {
+	if meta.ModuleName != "" {
 		// Remove name of module, makes stack traces shorter an easier to read
-		msg = strings.ReplaceAll(msg, conf.ModuleName+"/", "")
+		msg = strings.ReplaceAll(msg, meta.ModuleName+"/", "")
 	}
-	if viper.GetBool(conf.JSONOutput) {
+	if viper.GetBool(conf.JSONOutput.Name) {
 		// If writing to JSON logs, collapse stack trace into one line
 		msg = strings.ReplaceAll(msg, "\n", " ↩ ")
 	}

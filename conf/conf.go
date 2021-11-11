@@ -1,26 +1,42 @@
 package conf
 
-// Version is populated by the ldflags argument during build.
-var Version string = "TBD" // Set to TDB so it's visible when using go run
+import (
+	"fmt"
 
-// ModuleName is the name of the Go module of this project, passed in by ldflags during build.
-var ModuleName string
+	"github.com/mattolenik/cloudflare-ddns-client/meta"
+)
 
 var (
-	// Config is the path to the config file, if present
-	Config = "config"
-	// Daemon is the flag for enabling daemon mode
-	Daemon = "daemon"
-	// Domain is the domain to update within CloudFlare
-	Domain = "domain"
-	// Record is the DNS record to update within CloudFlare, may be same as Domain or a subdomain
-	Record = "record"
-	// Token is the CloudFlare API token
-	Token = "token"
-	// JSONOutput indicates that logging should be in JSON format instead of pretty console format
-	JSONOutput = "json"
-	// Verbose enables additional log output
-	Verbose = "verbose"
-	// VerboseShort is the short flag for verbose
-	VerboseShort = "v"
+	Config = StringOption{
+		Name:        "config",
+		Description: fmt.Sprintf("Path to config file. If not specified will look for %s in the program dir (%s), $HOME/.config, or /etc, in that order", meta.DefaultConfigFilename, meta.ProgramDir),
+	}
+	Daemon = BoolOption{
+		Name:        "daemon",
+		Default:     false,
+		Description: "Run as a service, continually monitoring for IP changes",
+	}
+	Domain = StringOption{
+		Name:        "domain",
+		Description: "Domain name in CloudFlare, e.g. example.com",
+	}
+	Record = StringOption{
+		Name:        "record",
+		Description: "DNS record name in CloudFlare, may be subdomain or same as domain",
+	}
+	Token = StringOption{
+		Name:        "token",
+		Description: "CloudFlare API token with permissions Zone:Zone:Read and Zone:DNS:Edit",
+	}
+	JSONOutput = StringOption{
+		Name:        "log-format",
+		Default:     "pretty",
+		Description: "Log format, either pretty or json, defaults to pretty",
+	}
+	Verbose = BoolOptionP{
+		Name:        "verbose",
+		ShortName:   "v",
+		Description: "Verbose logging, prints additional log output",
+		Default:     true,
+	}
 )

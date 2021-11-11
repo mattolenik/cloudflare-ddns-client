@@ -9,7 +9,6 @@ import (
 	"github.com/mattolenik/cloudflare-ddns-client/dns"
 	"github.com/mattolenik/cloudflare-ddns-client/ip"
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/viper"
 )
 
 // Run performs a one time DDNS update.
@@ -21,9 +20,9 @@ func Run(ctx context.Context) error {
 	log.Info().Msgf("Found public IP '%s'", ip)
 	err = dns.UpdateCloudFlare(
 		ctx,
-		viper.GetString(conf.Token),
-		viper.GetString(conf.Domain),
-		viper.GetString(conf.Record),
+		conf.Token.Get(),
+		conf.Domain.Get(),
+		conf.Record.Get(),
 		ip)
 	return errors.Trace(err)
 }
@@ -70,9 +69,9 @@ func Daemon(ctx context.Context, updatePeriod, failureRetryDelay time.Duration) 
 
 		err = dns.UpdateCloudFlare(
 			ctx,
-			viper.GetString(conf.Token),
-			viper.GetString(conf.Domain),
-			viper.GetString(conf.Record),
+			conf.Token.Get(),
+			conf.Domain.Get(),
+			conf.Record.Get(),
 			lastIP)
 		if err != nil {
 			log.Error().Msgf("unable to update DDNS, will retry in %d seconds", updatePeriod/time.Second)
