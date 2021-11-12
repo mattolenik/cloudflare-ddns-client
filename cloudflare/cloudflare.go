@@ -1,4 +1,4 @@
-package dns
+package cloudflare
 
 import (
 	"context"
@@ -8,8 +8,34 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// UpdateCloudFlare updates the CloudFlare DNS record
-func UpdateCloudFlare(ctx context.Context, token, domain, record, ip string) error {
+// Get fetches the IP of the given record, returning empty string if it doesn't exist
+func Get(ctx context.Context, token, domain, record string) (string, error) {
+	api, err := cloudflare.NewWithAPIToken(token)
+	if err != nil {
+		return "", errors.Annotate(err, "unable to connect to CloudFlare, token may be invalid")
+	}
+	// Get the zone ID for the domain
+	zoneID, err := api.ZoneIDByName(domain)
+	if err != nil {
+		return "", errors.Annotatef(err, "unable to retrieve zone ID for domain '%s' from CloudFlare", domain)
+	}
+	// Get the record ID
+	records, err := api.DNSRecords(ctx, zoneID, cloudflare.DNSRecord{Type: "A"})
+	if err != nil {
+		return "", errors.Annotate(err, "unable to retrieve zone ID from CloudFlare")
+	}
+	// Find the specific record
+	for _, r := range records {
+		log.Debug().Msgf("Examining DNS record ID '%s' with name '%s'", r.ID, r.Name)
+		if r.Name == record {
+			return r.Content, nil
+		}
+	}
+	return "", nil
+}
+
+// Update updates the CloudFlare DNS record
+func Update(ctx context.Context, token, domain, record, ip string) error {
 	api, err := cloudflare.NewWithAPIToken(token)
 	if err != nil {
 		return errors.Annotate(err, "unable to connect to CloudFlare, token may be invalid")

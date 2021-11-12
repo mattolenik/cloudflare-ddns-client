@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/juju/errors"
+	"github.com/mattolenik/cloudflare-ddns-client/cloudflare"
 	"github.com/mattolenik/cloudflare-ddns-client/conf"
-	"github.com/mattolenik/cloudflare-ddns-client/dns"
 	"github.com/mattolenik/cloudflare-ddns-client/ip"
 	"github.com/rs/zerolog/log"
 )
@@ -18,7 +18,7 @@ func Run(ctx context.Context) error {
 		return errors.Annotate(err, "unable to retrieve public IP")
 	}
 	log.Info().Msgf("Found public IP '%s'", ip)
-	err = dns.UpdateCloudFlare(
+	err = cloudflare.Update(
 		ctx,
 		conf.Token.Get(),
 		conf.Domain.Get(),
@@ -45,13 +45,23 @@ func Daemon(ctx context.Context, updatePeriod, failureRetryDelay time.Duration) 
 	log.Info().Msgf("Daemon running, will now monitor for IP updates every %d seconds", int(updatePeriod.Seconds()))
 
 	for {
+		dnsRecordIP, err := cloudflare.Get(
+			ctx,
+			conf.Token.Get(),
+			conf.Domain.Get(),
+			conf.Record.Get())
+		if err != nil {
+			log.Error().Msgf("unable to look up current DNS record, will retry in %d seconds", int(updatePeriod.Seconds()))
+			time.Sleep(failureRetryDelay)
+			continue
+		}
 		newIP, err := ip.GetPublicIPWithRetry(10, 5*time.Second)
 		if err != nil {
 			log.Error().Msgf("unable to retrieve public IP, will retry in %d seconds", int(updatePeriod.Seconds()))
 			time.Sleep(failureRetryDelay)
 			continue
 		}
-		if newIP == lastIP {
+		if newIP == lastIP && newIP == dnsRecordIP {
 			log.Info().Msgf(
 				"No IP change detected since %s (%d seconds ago)",
 				lastIPUpdate.Format(time.RFC1123Z),
@@ -60,14 +70,19 @@ func Daemon(ctx context.Context, updatePeriod, failureRetryDelay time.Duration) 
 			continue
 		}
 		if lastIP == "" {
-			log.Info().Msgf("Found public IP '%s'", lastIP)
+			// Log line for first time
+			log.Info().Msgf("Found public IP '%s'", newIP)
 		} else if newIP != lastIP {
+			// Log line for IP change
 			log.Info().Msgf("Detected new public IP address, it changed from '%s' to '%s'", lastIP, newIP)
+		} else if dnsRecordIP != newIP {
+			// Log line for no new IP, but mismatch with DNS record
+			log.Info().Msgf("Public IP address did not change, but DNS record did match, is '%s' but expected '%s', correcting", dnsRecordIP, newIP)
 		}
 		lastIP = newIP
 		lastIPUpdate = time.Now()
 
-		err = dns.UpdateCloudFlare(
+		err = cloudflare.Update(
 			ctx,
 			conf.Token.Get(),
 			conf.Domain.Get(),
