@@ -52,7 +52,7 @@ func init() {
 	conf.Token.Bind(f).Viper()
 	conf.JSONOutput.Bind(f).Viper()
 	conf.Verbose.Bind(f).Viper()
-	conf.Daemon.Bind(f)
+	conf.Daemon.Bind(f).Viper()
 	Root.SetVersionTemplate("{{.Version}}\n")
 
 	cobra.OnInitialize(initConfig)
