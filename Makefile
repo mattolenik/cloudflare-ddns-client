@@ -32,6 +32,9 @@ $(DIST)/$(BIN_NAME): $(SOURCE)
 
 all: $(addprefix $(DIST)/$(BIN_NAME)-,$(PLATFORMS))
 
+docker:	$(DIST)/$(BIN_NAME)-linux-amd64
+	docker build --tag $(DOCKER_TAG_LATEST) .
+
 docker-publish: check-version
 	docker buildx build --push --tag $(DOCKER_TAG_LATEST) --tag $(DOCKER_TAG_VERSIONED) --platform linux/amd64,linux/arm64 .
 

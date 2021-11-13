@@ -11,6 +11,7 @@ import (
 	"github.com/mattolenik/cloudflare-ddns-client/ddns"
 	"github.com/mattolenik/cloudflare-ddns-client/errhandler"
 	"github.com/mattolenik/cloudflare-ddns-client/meta"
+	"github.com/mattolenik/cloudflare-ddns-client/providers"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -30,10 +31,14 @@ For example:
     DOMAIN=mydomain.com RECORD=sub.mydomain.com TOKEN=<api-token> cloudflare-ddns
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if conf.Daemon.Get() {
-			return errors.Trace(ddns.DaemonWithDefaults(context.Background()))
+		provider, err := providers.NewCloudFlareProvider(context.Background(), conf.Token.Get())
+		if err != nil {
+			return errors.Annotatef(err, "failed to configure DDNS provider")
 		}
-		return errors.Trace(ddns.Run(context.Background()))
+		if conf.Daemon.Get() {
+			return errors.Trace(ddns.DaemonWithDefaults(provider))
+		}
+		return errors.Trace(ddns.Run(provider))
 	},
 	Version: meta.Version,
 }
@@ -46,37 +51,41 @@ func init() {
 		panic(err)
 	}
 	f := Root.PersistentFlags()
-	conf.Config.BindVar(f, &meta.ConfigFile).Viper()
-	conf.Domain.Bind(f).Viper()
-	conf.Record.Bind(f).Viper()
-	conf.Token.Bind(f).Viper()
-	conf.JSONOutput.Bind(f).Viper()
-	conf.Verbose.Bind(f).Viper()
-	conf.Daemon.Bind(f).Viper()
+	conf.Config.BindVar(f, &conf.ConfigFile)
+	conf.Domain.Bind(f).WithDefault()
+	conf.Record.Bind(f).WithDefault()
+	conf.Token.Bind(f).WithDefault()
+	conf.JSONOutput.Bind(f).WithDefault()
+	conf.Verbose.Bind(f).WithDefault()
+	conf.Daemon.Bind(f).WithDefault()
 	Root.SetVersionTemplate("{{.Version}}\n")
 
 	cobra.OnInitialize(initConfig)
 }
 
 func initConfig() {
-	if meta.ConfigFile != "" {
-		// Use config file from the flag.
-		viper.SetConfigFile(meta.ConfigFile)
-	} else {
-		viper.AddConfigPath(meta.ProgramDir)
-		viper.AddConfigPath("$HOME/.config")
-		viper.AddConfigPath("/etc")
-		viper.SetConfigName(meta.DefaultConfigFilename)
-	}
 	viper.AutomaticEnv()
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
-
-	// Config file is optional, ignore errors
-	err := viper.ReadInConfig()
 	// TODO: use enums/string consts instead of hardcoded string "json"
 	if conf.JSONOutput.Get() != "json" {
 		writer := zerolog.ConsoleWriter{Out: os.Stderr}
 		log.Logger = log.Output(writer)
+	}
+	if conf.ConfigFile != "" {
+		log.Info().Msgf("Using configuration from file '%s'", conf.ConfigFile)
+		// Use config file from the flag.
+		viper.SetConfigFile(conf.ConfigFile)
+	} else {
+		viper.AddConfigPath(meta.ProgramDir)
+		viper.AddConfigPath("$HOME/.config")
+		viper.AddConfigPath("/etc/")
+		viper.SetConfigName(conf.DefaultConfigFilename)
+	}
+
+	// Config file is optional, ignore errors
+	err := viper.ReadInConfig()
+	if err != nil {
+		errhandler.Handle(err)
 	}
 	if conf.Verbose.Get() {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
@@ -85,7 +94,7 @@ func initConfig() {
 	}
 	// Config file is optional, continue if not found, unless config was specified by user and still not found
 	_, notFound := err.(viper.ConfigFileNotFoundError)
-	if !(notFound && meta.ConfigFile == "") {
+	if !(notFound && conf.ConfigFile == "") {
 		errhandler.Handle(err)
 	}
 }

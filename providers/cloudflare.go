@@ -1,4 +1,4 @@
-package cloudflare
+package providers
 
 import (
 	"context"
@@ -8,19 +8,28 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// Get fetches the IP of the given record, returning empty string if it doesn't exist
-func Get(ctx context.Context, token, domain, record string) (string, error) {
-	api, err := cloudflare.NewWithAPIToken(token)
+type CloudFlareProvider struct {
+	client *cloudflare.API
+	ctx    context.Context
+}
+
+func NewCloudFlareProvider(ctx context.Context, apiToken string) (*CloudFlareProvider, error) {
+	api, err := cloudflare.NewWithAPIToken(apiToken)
 	if err != nil {
-		return "", errors.Annotate(err, "unable to connect to CloudFlare, token may be invalid")
+		return nil, errors.Annotate(err, "unable to connect to CloudFlare, token may be invalid")
 	}
+	return &CloudFlareProvider{client: api, ctx: ctx}, nil
+}
+
+// Get fetches the IP of the given record, returning empty string if it doesn't exist
+func (p *CloudFlareProvider) Get(domain, record string) (string, error) {
 	// Get the zone ID for the domain
-	zoneID, err := api.ZoneIDByName(domain)
+	zoneID, err := p.client.ZoneIDByName(domain)
 	if err != nil {
 		return "", errors.Annotatef(err, "unable to retrieve zone ID for domain '%s' from CloudFlare", domain)
 	}
 	// Get the record ID
-	records, err := api.DNSRecords(ctx, zoneID, cloudflare.DNSRecord{Type: "A"})
+	records, err := p.client.DNSRecords(p.ctx, zoneID, cloudflare.DNSRecord{Type: "A"})
 	if err != nil {
 		return "", errors.Annotate(err, "unable to retrieve zone ID from CloudFlare")
 	}
@@ -35,18 +44,14 @@ func Get(ctx context.Context, token, domain, record string) (string, error) {
 }
 
 // Update updates the CloudFlare DNS record
-func Update(ctx context.Context, token, domain, record, ip string) error {
-	api, err := cloudflare.NewWithAPIToken(token)
-	if err != nil {
-		return errors.Annotate(err, "unable to connect to CloudFlare, token may be invalid")
-	}
+func (p *CloudFlareProvider) Update(domain, record, ip string) error {
 	// Get the zone ID for the domain
-	zoneID, err := api.ZoneIDByName(domain)
+	zoneID, err := p.client.ZoneIDByName(domain)
 	if err != nil {
 		return errors.Annotatef(err, "unable to retrieve zone ID for domain '%s' from CloudFlare", domain)
 	}
 	// Get the record ID
-	records, err := api.DNSRecords(ctx, zoneID, cloudflare.DNSRecord{Type: "A"})
+	records, err := p.client.DNSRecords(p.ctx, zoneID, cloudflare.DNSRecord{Type: "A"})
 	if err != nil {
 		return errors.Annotate(err, "unable to retrieve zone ID from CloudFlare")
 	}
@@ -66,7 +71,7 @@ func Update(ctx context.Context, token, domain, record, ip string) error {
 	// Create the record if it's not already there
 	if recordID == "" {
 		log.Info().Msgf("No DNS record '%s' found for domain '%s', creating now", record, domain)
-		resp, err := api.CreateDNSRecord(ctx, zoneID, cloudflare.DNSRecord{
+		resp, err := p.client.CreateDNSRecord(p.ctx, zoneID, cloudflare.DNSRecord{
 			Content: ip,
 			Type:    "A",
 			Name:    record,
@@ -77,7 +82,7 @@ func Update(ctx context.Context, token, domain, record, ip string) error {
 		recordID = resp.Result.ID
 	}
 	// Update the record
-	err = api.UpdateDNSRecord(ctx, zoneID, recordID, cloudflare.DNSRecord{
+	err = p.client.UpdateDNSRecord(p.ctx, zoneID, recordID, cloudflare.DNSRecord{
 		Content: ip,
 		Type:    "A",
 	})

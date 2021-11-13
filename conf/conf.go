@@ -7,9 +7,12 @@ import (
 )
 
 var (
+	ConfigFile            string // Path to the config file, if any
+	DefaultConfigFilename = "cloudflare-ddns.toml"
+
 	Config = StringOption{
 		Name:        "config",
-		Description: fmt.Sprintf("Path to config file. If not specified will look for %s in the program dir (%s), $HOME/.config, or /etc, in that order", meta.DefaultConfigFilename, meta.ProgramDir),
+		Description: fmt.Sprintf("Path to config file. If not specified will look for %s in the program dir (%s), $HOME/.config, or /etc, in that order", DefaultConfigFilename, meta.ProgramDir),
 	}
 	Daemon = BoolOption{
 		Name:        "daemon",
