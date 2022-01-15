@@ -8,8 +8,6 @@ require (
 	github.com/juju/errors v0.0.0-20210818161939-5560c4c073ff
 	github.com/lixiangzhong/dnsutil v1.4.0
 	github.com/miekg/dns v1.1.45
-	github.com/onsi/ginkgo/v2 v2.0.0
-	github.com/onsi/gomega v1.17.0
 	github.com/rs/zerolog v1.26.1
 	github.com/spf13/cobra v1.3.0
 	github.com/spf13/pflag v1.0.5
