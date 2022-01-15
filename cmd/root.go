@@ -36,9 +36,9 @@ For example:
 			return errors.Annotatef(err, "failed to configure DDNS provider")
 		}
 		if conf.Daemon.Get() {
-			return errors.Trace(ddns.DaemonWithDefaults(provider))
+			return errors.Trace(ddns.StartWithDefaults(provider))
 		}
-		return errors.Trace(ddns.Run(provider))
+		return errors.Trace(ddns.Update(provider))
 	},
 	Version: meta.Version,
 }

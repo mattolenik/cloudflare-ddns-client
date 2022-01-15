@@ -17,4 +17,6 @@ import (
 	// the lixiangzhong/dnsutil package. Adding it here creates a direct dependency and
 	// prevents go mod tidy from removing it from this module's go.mod.
 	_ "github.com/miekg/dns"
+
+	_ "github.com/golang/mock/mockgen"
 )

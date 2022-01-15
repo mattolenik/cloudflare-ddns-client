@@ -1,5 +1,7 @@
 package ddns
 
+//go:generate mockgen -destination=../mocks/mock_ddns.go -package=mocks -source=ddns.go
+
 import (
 	"time"
 
@@ -14,8 +16,19 @@ type DDNSProvider interface {
 	Update(domain, record, ip string) error
 }
 
-// Run performs a one time DDNS update.
-func Run(provider DDNSProvider) error {
+type Daemon interface {
+	Update(provider DDNSProvider) error
+	Start(provider DDNSProvider, updatePeriod, failureRetryDelay time.Duration) error
+	Stop() error
+}
+
+type DDNSDaemon struct {
+	Daemon
+	shouldRun bool
+}
+
+// Update performs a one time DDNS update.
+func (d *DDNSDaemon) Update(provider DDNSProvider) error {
 	ip, err := ip.GetPublicIPWithRetry(10, 5*time.Second)
 	if err != nil {
 		return errors.Annotate(err, "unable to retrieve public IP")
@@ -25,22 +38,16 @@ func Run(provider DDNSProvider) error {
 	return errors.Annotatef(err, "failed to update DNS")
 }
 
-// DaemonWithDefaults calls Daemon but with default values
-func DaemonWithDefaults(provider DDNSProvider) error {
-	d := 10 * time.Second
-	return errors.Trace(Daemon(provider, d, d))
-}
-
-// Daemon continually keeps DDNS up to date.
+// Start continually keeps DDNS up to date.
 // updatePeriod      - how often to check for updates
 // failureRetryDelay - how long to wait until retry after a failure
-func Daemon(provider DDNSProvider, updatePeriod, failureRetryDelay time.Duration) error {
+func (d *DDNSDaemon) Start(provider DDNSProvider, updatePeriod, failureRetryDelay time.Duration) error {
 	var lastIP string
 	var lastIPUpdate time.Time
 
 	log.Info().Msgf("Daemon running, will now monitor for IP updates every %d seconds", int(updatePeriod.Seconds()))
 
-	for {
+	for d.shouldRun {
 		dnsRecordIP, err := provider.Get(conf.Domain.Get(), conf.Record.Get())
 		if err != nil {
 			log.Error().Msgf("Unable to look up current DNS record, will retry in %d seconds. Error was:\n%v", int(updatePeriod.Seconds()), err)
@@ -80,6 +87,20 @@ func Daemon(provider DDNSProvider, updatePeriod, failureRetryDelay time.Duration
 			time.Sleep(failureRetryDelay)
 			continue
 		}
+		if !d.shouldRun {
+			break
+		}
 		time.Sleep(updatePeriod)
 	}
+	return nil
+}
+
+// StartWithDefaults calls Start but with default values
+func (d *DDNSDaemon) StartWithDefaults(provider DDNSProvider) error {
+	t := 10 * time.Second
+	return errors.Trace(d.Start(provider, t, t))
+}
+
+func (d *DDNSDaemon) Stop() {
+	d.shouldRun = true
 }
