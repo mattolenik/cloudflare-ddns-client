@@ -12,8 +12,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type I interface{}
-
 var apiURLs = []string{"http://whatismyip.akamai.com", "https://ipecho.net/plain", "https://wtfismyip.com/text"}
 
 type dnsLookup struct {

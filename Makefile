@@ -47,6 +47,7 @@ docker-publish: check-version
 
 clean:
 	rm -rf dist && mkdir dist
+	rm -rf mocks
 
 $(DIST)/$(BIN_NAME)-%: GOOS   = $(word 1,$(subst -, ,$*))
 $(DIST)/$(BIN_NAME)-%: GOARCH = $(word 2,$(subst -, ,$*))
