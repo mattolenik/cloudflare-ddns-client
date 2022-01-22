@@ -4,22 +4,29 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/stretchr/testify/assert"
+	"github.com/mattolenik/cloudflare-ddns-client/test"
 )
 
 func TestDDNSDaemon(t *testing.T) {
-	assert := assert.New(t)
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-	d := NewMockDaemon(ctrl)
-	p := NewMockDDNSProvider(ctrl)
+	assert, _, ctrl, cleanup := test.NewTools(t)
+	defer cleanup()
+
 	domain := "abc.com"
 	record := "xyz.abc.com"
-	ip := "1.1.1.1"
-	p.EXPECT().Update(gomock.Eq(domain), gomock.Eq(record), gomock.Eq(ip)).Return(nil).Times(1)
-	p.EXPECT().Get(domain, record).Return(ip, nil).Times(1)
-	assert.NoError(d.Update(p))
-	ip, err := p.Get(domain)
+	expectedIP := "1.1.1.1"
+
+	ddnsProvider := NewMockDDNSProvider(ctrl)
+	ipProvider := NewMockIPProvider(ctrl)
+	configProvider := NewMockConfigProvider(ctrl)
+	ddnsDaemon := NewDDNSDaemon(ddnsProvider, ipProvider, configProvider)
+
+	configProvider.EXPECT().Get().Return(domain, record, nil)
+	ipProvider.EXPECT().Get().Return(expectedIP, nil)
+	ddnsProvider.EXPECT().Update(gomock.Eq(domain), gomock.Eq(record), gomock.Eq(expectedIP)).Return(nil).Times(1)
+	ddnsProvider.EXPECT().Get(domain, record).Return(expectedIP, nil).Times(1)
+	assert.NoError(ddnsDaemon.Update())
+
+	actualIP, err := ddnsProvider.Get(domain, record)
 	assert.NoError(err)
-	assert.Equal(ip, ip)
+	assert.Equal(expectedIP, actualIP)
 }

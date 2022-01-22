@@ -20,13 +20,9 @@ type IPProvider interface {
 	Get() (ip string, err error)
 }
 
-type ConfigProvider interface {
-	Get() (domain, record string, err error)
-}
+type DefaultIPProvider struct{}
 
-type ipProvider struct{}
-
-func (p *ipProvider) Get() (string, error) {
+func (p *DefaultIPProvider) Get() (string, error) {
 	ip, err := ip.GetPublicIPWithRetry(10, 5*time.Second)
 	if err != nil {
 		return "", errors.Trace(err)
@@ -34,10 +30,22 @@ func (p *ipProvider) Get() (string, error) {
 	return ip, nil
 }
 
-type configProvider struct{}
+func NewDefaultIPProvider() *DefaultIPProvider {
+	return &DefaultIPProvider{}
+}
 
-func (p *configProvider) Get() (domain, record string, err error) {
+type ConfigProvider interface {
+	Get() (domain, record string, err error)
+}
+
+type DefaultConfigProvider struct{}
+
+func (p *DefaultConfigProvider) Get() (domain, record string, err error) {
 	return conf.Domain.Get(), conf.Record.Get(), nil
+}
+
+func NewDefaultConfigProvider() *DefaultConfigProvider {
+	return &DefaultConfigProvider{}
 }
 
 type Daemon interface {
@@ -150,7 +158,7 @@ func (d *DDNSDaemon) Start(updatePeriod, failureRetryDelay time.Duration) error 
 }
 
 // StartWithDefaults calls Start but with default values
-func (d *DDNSDaemon) StartWithDefaults(provider DDNSProvider) error {
+func (d *DDNSDaemon) StartWithDefaults() error {
 	t := 10 * time.Second
 	return errors.Trace(d.Start(t, t))
 }

@@ -63,6 +63,83 @@ func (mr *MockDDNSProviderMockRecorder) Update(domain, record, ip interface{}) *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockDDNSProvider)(nil).Update), domain, record, ip)
 }
 
+// MockIPProvider is a mock of IPProvider interface.
+type MockIPProvider struct {
+	ctrl     *gomock.Controller
+	recorder *MockIPProviderMockRecorder
+}
+
+// MockIPProviderMockRecorder is the mock recorder for MockIPProvider.
+type MockIPProviderMockRecorder struct {
+	mock *MockIPProvider
+}
+
+// NewMockIPProvider creates a new mock instance.
+func NewMockIPProvider(ctrl *gomock.Controller) *MockIPProvider {
+	mock := &MockIPProvider{ctrl: ctrl}
+	mock.recorder = &MockIPProviderMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockIPProvider) EXPECT() *MockIPProviderMockRecorder {
+	return m.recorder
+}
+
+// Get mocks base method.
+func (m *MockIPProvider) Get() (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Get")
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Get indicates an expected call of Get.
+func (mr *MockIPProviderMockRecorder) Get() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockIPProvider)(nil).Get))
+}
+
+// MockConfigProvider is a mock of ConfigProvider interface.
+type MockConfigProvider struct {
+	ctrl     *gomock.Controller
+	recorder *MockConfigProviderMockRecorder
+}
+
+// MockConfigProviderMockRecorder is the mock recorder for MockConfigProvider.
+type MockConfigProviderMockRecorder struct {
+	mock *MockConfigProvider
+}
+
+// NewMockConfigProvider creates a new mock instance.
+func NewMockConfigProvider(ctrl *gomock.Controller) *MockConfigProvider {
+	mock := &MockConfigProvider{ctrl: ctrl}
+	mock.recorder = &MockConfigProviderMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockConfigProvider) EXPECT() *MockConfigProviderMockRecorder {
+	return m.recorder
+}
+
+// Get mocks base method.
+func (m *MockConfigProvider) Get() (string, string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Get")
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(string)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// Get indicates an expected call of Get.
+func (mr *MockConfigProviderMockRecorder) Get() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockConfigProvider)(nil).Get))
+}
+
 // MockDaemon is a mock of Daemon interface.
 type MockDaemon struct {
 	ctrl     *gomock.Controller

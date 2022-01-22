@@ -35,10 +35,11 @@ For example:
 		if err != nil {
 			return errors.Annotatef(err, "failed to configure DDNS provider")
 		}
+		daemon := ddns.NewDDNSDaemon(provider, ddns.NewDefaultIPProvider(), ddns.NewDefaultConfigProvider())
 		if conf.Daemon.Get() {
-			return errors.Trace(ddns.StartWithDefaults(provider))
+			return errors.Trace(daemon.StartWithDefaults())
 		}
-		return errors.Trace(ddns.Update(provider))
+		return errors.Trace(daemon.Update())
 	},
 	Version: meta.Version,
 }
