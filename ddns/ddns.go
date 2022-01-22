@@ -8,7 +8,7 @@ import (
 	"github.com/juju/errors"
 	"github.com/mattolenik/cloudflare-ddns-client/conf"
 	"github.com/mattolenik/cloudflare-ddns-client/ip"
-	"github.com/rs/zerolog/log"
+	"github.com/mattolenik/cloudflare-ddns-client/task"
 )
 
 type DDNSProvider interface {
@@ -49,9 +49,9 @@ func NewDefaultConfigProvider() *DefaultConfigProvider {
 }
 
 type Daemon interface {
-	Update(provider DDNSProvider) error
-	Start(provider DDNSProvider, updatePeriod, failureRetryDelay time.Duration) error
-	Stop() error
+	Update() error
+	Start(updatePeriod, retryDelay time.Duration) chan task.Status
+	Stop()
 }
 
 type DDNSDaemon struct {
@@ -62,8 +62,8 @@ type DDNSDaemon struct {
 	configProvider ConfigProvider
 }
 
-// NewDDNSDaemon creates a new DDNSDaemon
-func NewDDNSDaemon(ddnsProvider DDNSProvider, ipProvider IPProvider, configProvider ConfigProvider) *DDNSDaemon {
+// NewDefaultDaemon creates a new DDNSDaemon
+func NewDefaultDaemon(ddnsProvider DDNSProvider, ipProvider IPProvider, configProvider ConfigProvider) *DDNSDaemon {
 	if ddnsProvider == nil {
 		panic("ddnsProvider must not be nil")
 	}
@@ -87,7 +87,6 @@ func (d *DDNSDaemon) Update() error {
 	if err != nil {
 		return errors.Annotate(err, "unable to retrieve public IP")
 	}
-	log.Info().Msgf("Found public IP '%s'", ip)
 	domain, record, err := d.configProvider.Get()
 	if err != nil {
 		return errors.Annotate(err, "unable to find domain or record in configuration")
@@ -99,70 +98,82 @@ func (d *DDNSDaemon) Update() error {
 // Start continually keeps DDNS up to date.
 // updatePeriod      - how often to check for updates
 // failureRetryDelay - how long to wait until retry after a failure
-func (d *DDNSDaemon) Start(updatePeriod, failureRetryDelay time.Duration) error {
+func (d *DDNSDaemon) Start(updatePeriod, retryDelay time.Duration) (status chan task.Status) {
 	var lastIP string
 	var lastIPUpdate time.Time
 
-	log.Info().Msgf("Daemon running, will now monitor for IP updates every %d seconds", int(updatePeriod.Seconds()))
+	status <- task.InfoStatusf("Daemon running, will now monitor for IP updates every %d seconds", int(updatePeriod.Seconds()))
 
-	for d.shouldRun {
-		domain, record, err := d.configProvider.Get()
-		if err != nil {
-			return errors.Annotate(err, "unable to find domain or record in configuration")
-		}
-		dnsRecordIP, err := d.ddnsProvider.Get(domain, record)
-		if err != nil {
-			log.Error().Msgf("Unable to look up current DNS record, will retry in %d seconds. Error was:\n%v", int(updatePeriod.Seconds()), err)
-			time.Sleep(failureRetryDelay)
-			continue
-		}
-		newIP, err := d.ipProvider.Get()
-		if err != nil {
-			log.Error().Msgf("Unable to retrieve public IP, will retry in %d seconds. Error was:\n%v", int(updatePeriod.Seconds()), err)
-			time.Sleep(failureRetryDelay)
-			continue
-		}
-		if newIP == lastIP && newIP == dnsRecordIP {
-			log.Info().Msgf(
-				"No IP change detected since %s (%d seconds ago)",
-				lastIPUpdate.Format(time.RFC1123Z),
-				int(time.Since(lastIPUpdate).Seconds()))
+	func() {
+		defer close(status)
+		for d.shouldRun {
+			domain, record, err := d.configProvider.Get()
+			if err != nil {
+				status <- task.FatalStatusWrap(err, "unable to find domain or record in configuration")
+				return
+			}
+			dnsRecordIP, err := d.ddnsProvider.Get(domain, record)
+			if err != nil {
+				status <- task.ErrorStatusf("Unable to look up current DNS record, will retry in %d seconds. Error was:\n%v", int(updatePeriod.Seconds()), err)
+				time.Sleep(retryDelay)
+				continue
+			}
+			newIP, err := d.ipProvider.Get()
+			if err != nil {
+				status <- task.ErrorStatusf("Unable to retrieve public IP, will retry in %d seconds. Error was:\n%v", int(updatePeriod.Seconds()), err)
+				time.Sleep(retryDelay)
+				continue
+			}
+
+			// Nothing has changed, log and move on
+			if newIP == lastIP && newIP == dnsRecordIP {
+				status <- task.InfoStatusf(
+					"No IP change detected since %s (%d seconds ago)",
+					lastIPUpdate.Format(time.RFC1123Z),
+					int(time.Since(lastIPUpdate).Seconds()))
+				time.Sleep(updatePeriod)
+				continue
+			}
+
+			// IP has changed, log depending on how it has changed
+			if lastIP == "" {
+				// Log line for first time
+				status <- task.InfoStatusf("Found public IP '%s'", newIP)
+			} else if newIP != lastIP {
+				// Log line for IP change
+				status <- task.InfoStatusf("Detected new public IP address, it changed from '%s' to '%s'", lastIP, newIP)
+			} else if dnsRecordIP != newIP {
+				// Log line for no new IP, but mismatch with DNS record
+				status <- task.InfoStatusf("Public IP address did not change, but DNS record did match, is '%s' but expected '%s', correcting", dnsRecordIP, newIP)
+			}
+
+			lastIP = newIP
+			lastIPUpdate = time.Now()
+
+			// Reach out to the actual DDNS provider and make the update
+			err = d.ddnsProvider.Update(domain, record, lastIP)
+			if err != nil {
+				status <- task.ErrorStatusf("Unable to update DNS, will retry in %d seconds. Erorr was:\n%v", updatePeriod/time.Second, err)
+				time.Sleep(retryDelay)
+				continue
+			}
+			// Do another run check before the sleep occurs so as to not draw out the stop operation
+			if !d.shouldRun {
+				break
+			}
 			time.Sleep(updatePeriod)
-			continue
 		}
-		if lastIP == "" {
-			// Log line for first time
-			log.Info().Msgf("Found public IP '%s'", newIP)
-		} else if newIP != lastIP {
-			// Log line for IP change
-			log.Info().Msgf("Detected new public IP address, it changed from '%s' to '%s'", lastIP, newIP)
-		} else if dnsRecordIP != newIP {
-			// Log line for no new IP, but mismatch with DNS record
-			log.Info().Msgf("Public IP address did not change, but DNS record did match, is '%s' but expected '%s', correcting", dnsRecordIP, newIP)
-		}
-		lastIP = newIP
-		lastIPUpdate = time.Now()
-
-		err = d.ddnsProvider.Update(domain, record, lastIP)
-		if err != nil {
-			log.Error().Msgf("Unable to update DNS, will retry in %d seconds. Erorr was:\n%v", updatePeriod/time.Second, err)
-			time.Sleep(failureRetryDelay)
-			continue
-		}
-		if !d.shouldRun {
-			break
-		}
-		time.Sleep(updatePeriod)
-	}
-	return nil
+	}()
+	return status
 }
 
 // StartWithDefaults calls Start but with default values
-func (d *DDNSDaemon) StartWithDefaults() error {
+func (d *DDNSDaemon) StartWithDefaults() chan task.Status {
 	t := 10 * time.Second
-	return errors.Trace(d.Start(t, t))
+	return d.Start(t, t)
 }
 
+// Stop instructs the daemon to stop as soon as the current (if any) operation is finished
 func (d *DDNSDaemon) Stop() {
 	d.shouldRun = true
 }

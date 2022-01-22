@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/juju/errors"
 	"github.com/mattolenik/cloudflare-ddns-client/conf"
@@ -12,6 +13,7 @@ import (
 	"github.com/mattolenik/cloudflare-ddns-client/errhandler"
 	"github.com/mattolenik/cloudflare-ddns-client/meta"
 	"github.com/mattolenik/cloudflare-ddns-client/providers"
+	"github.com/mattolenik/cloudflare-ddns-client/task"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -35,13 +37,36 @@ For example:
 		if err != nil {
 			return errors.Annotatef(err, "failed to configure DDNS provider")
 		}
-		daemon := ddns.NewDDNSDaemon(provider, ddns.NewDefaultIPProvider(), ddns.NewDefaultConfigProvider())
+		daemon := ddns.NewDefaultDaemon(provider, ddns.NewDefaultIPProvider(), ddns.NewDefaultConfigProvider())
 		if conf.Daemon.Get() {
-			return errors.Trace(daemon.StartWithDefaults())
+			return errors.Trace(runDaemon(provider, daemon))
 		}
 		return errors.Trace(daemon.Update())
 	},
 	Version: meta.Version,
+}
+
+func runDaemon(provider ddns.DDNSProvider, daemon *ddns.DDNSDaemon) error {
+	statusChan := daemon.StartWithDefaults()
+	for {
+		select {
+		case status := <-statusChan:
+			switch status.Type {
+			case task.Info:
+				log.Info().Msg(status.Message)
+			case task.Error:
+				log.Error().Msg(status.Message)
+			case task.Fatal:
+				log.Error().Msg("FATAL: " + status.Message)
+				return status.Error
+			}
+			if status.IsDone {
+				return nil
+			}
+		default:
+			time.Sleep(1 * time.Second)
+		}
+	}
 }
 
 func init() {
