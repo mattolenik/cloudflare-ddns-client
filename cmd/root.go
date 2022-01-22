@@ -46,29 +46,6 @@ For example:
 	Version: meta.Version,
 }
 
-func runDaemon(provider ddns.DDNSProvider, daemon *ddns.DDNSDaemon) error {
-	statusChan := daemon.StartWithDefaults()
-	for {
-		select {
-		case status := <-statusChan:
-			switch status.Type {
-			case task.Info:
-				log.Info().Msg(status.Message)
-			case task.Error:
-				log.Error().Msg(status.Message)
-			case task.Fatal:
-				log.Error().Msg("FATAL: " + status.Message)
-				return status.Error
-			}
-			if status.IsDone {
-				return nil
-			}
-		default:
-			time.Sleep(1 * time.Second)
-		}
-	}
-}
-
 func init() {
 	if path, err := os.Executable(); err == nil {
 		meta.ProgramDir = filepath.Dir(path)
@@ -122,5 +99,28 @@ func initConfig() {
 	_, notFound := err.(viper.ConfigFileNotFoundError)
 	if !(notFound && conf.ConfigFile == "") {
 		errhandler.Handle(err)
+	}
+}
+
+func runDaemon(provider ddns.DDNSProvider, daemon *ddns.DDNSDaemon) error {
+	statusChan := daemon.StartWithDefaults()
+	for {
+		select {
+		case status := <-statusChan:
+			switch status.Type {
+			case task.Info:
+				log.Info().Msg(status.Message)
+			case task.Error:
+				log.Error().Msg(status.Message)
+			case task.Fatal:
+				log.Error().Msg("FATAL: " + status.Message)
+				return status.Error
+			}
+			if status.IsDone {
+				return nil
+			}
+		default:
+			time.Sleep(1 * time.Second)
+		}
 	}
 }

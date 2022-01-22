@@ -96,8 +96,8 @@ func (d *DDNSDaemon) Update() error {
 }
 
 // Start continually keeps DDNS up to date.
-// updatePeriod      - how often to check for updates
-// failureRetryDelay - how long to wait until retry after a failure
+// updatePeriod - how often to check for updates
+// retryDelay   - how long to wait until retry after a failure
 func (d *DDNSDaemon) Start(updatePeriod, retryDelay time.Duration) (status chan task.Status) {
 	var lastIP string
 	var lastIPUpdate time.Time
