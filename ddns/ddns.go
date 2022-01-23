@@ -48,18 +48,21 @@ func NewDefaultConfigProvider() *DefaultConfigProvider {
 	return &DefaultConfigProvider{}
 }
 
-type Daemon interface {
+type Daemon[T any] interface {
 	Update() error
-	Start(updatePeriod, retryDelay time.Duration) chan task.Status
+	Start(updatePeriod, retryDelay time.Duration) task.StatusStream[T]
 	Stop()
 }
 
 type DDNSDaemon struct {
-	Daemon
+	Daemon[StatusInfo]
 	shouldRun      bool
 	ddnsProvider   DDNSProvider
 	ipProvider     IPProvider
 	configProvider ConfigProvider
+
+	BeforeUpdate func()
+	AfterUpdate  func()
 }
 
 // NewDefaultDaemon creates a new DDNSDaemon
@@ -95,39 +98,43 @@ func (d *DDNSDaemon) Update() error {
 	return errors.Annotatef(err, "failed to update DNS")
 }
 
-// Start continually keeps DDNS up to date.
+type StatusInfo struct {
+	AtEndOfUpdate bool
+}
+
+// Start continually keeps DDNS up to date, asynchronously in a new goroutine.
 // updatePeriod - how often to check for updates
 // retryDelay   - how long to wait until retry after a failure
-func (d *DDNSDaemon) Start(updatePeriod, retryDelay time.Duration) (status chan task.Status) {
+func (d *DDNSDaemon) Start(updatePeriod, retryDelay time.Duration) (status task.StatusStream[StatusInfo]) {
 	var lastIP string
 	var lastIPUpdate time.Time
 
-	status <- task.InfoStatusf("Daemon running, will now monitor for IP updates every %d seconds", int(updatePeriod.Seconds()))
+	status.Infof("Daemon running, will now monitor for IP updates every %d seconds", int(updatePeriod.Seconds()))
 
 	func() {
 		defer close(status)
 		for d.shouldRun {
 			domain, record, err := d.configProvider.Get()
 			if err != nil {
-				status <- task.FatalStatusWrap(err, "unable to find domain or record in configuration")
+				status.Fatal(errors.Annotate(err, "unable to find domain or record in configuration"))
 				return
 			}
 			dnsRecordIP, err := d.ddnsProvider.Get(domain, record)
 			if err != nil {
-				status <- task.ErrorStatusf("Unable to look up current DNS record, will retry in %d seconds. Error was:\n%v", int(updatePeriod.Seconds()), err)
+				status.Error(errors.Annotatef(err, "Unable to look up current DNS record, will retry in %d seconds. Error was:\n%v", int(updatePeriod.Seconds())))
 				time.Sleep(retryDelay)
 				continue
 			}
 			newIP, err := d.ipProvider.Get()
 			if err != nil {
-				status <- task.ErrorStatusf("Unable to retrieve public IP, will retry in %d seconds. Error was:\n%v", int(updatePeriod.Seconds()), err)
+				status.Errorf("Unable to retrieve public IP, will retry in %d seconds. Error was:\n%v", int(updatePeriod.Seconds()), err)
 				time.Sleep(retryDelay)
 				continue
 			}
 
 			// Nothing has changed, log and move on
 			if newIP == lastIP && newIP == dnsRecordIP {
-				status <- task.InfoStatusf(
+				status.Infof(
 					"No IP change detected since %s (%d seconds ago)",
 					lastIPUpdate.Format(time.RFC1123Z),
 					int(time.Since(lastIPUpdate).Seconds()))
@@ -138,13 +145,13 @@ func (d *DDNSDaemon) Start(updatePeriod, retryDelay time.Duration) (status chan 
 			// IP has changed, log depending on how it has changed
 			if lastIP == "" {
 				// Log line for first time
-				status <- task.InfoStatusf("Found public IP '%s'", newIP)
+				status.Infof("Found public IP '%s'", newIP)
 			} else if newIP != lastIP {
 				// Log line for IP change
-				status <- task.InfoStatusf("Detected new public IP address, it changed from '%s' to '%s'", lastIP, newIP)
+				status.Infof("Detected new public IP address, it changed from '%s' to '%s'", lastIP, newIP)
 			} else if dnsRecordIP != newIP {
 				// Log line for no new IP, but mismatch with DNS record
-				status <- task.InfoStatusf("Public IP address did not change, but DNS record did match, is '%s' but expected '%s', correcting", dnsRecordIP, newIP)
+				status.Infof("Public IP address did not change, but DNS record did match, is '%s' but expected '%s', correcting", dnsRecordIP, newIP)
 			}
 
 			lastIP = newIP
@@ -153,13 +160,17 @@ func (d *DDNSDaemon) Start(updatePeriod, retryDelay time.Duration) (status chan 
 			// Reach out to the actual DDNS provider and make the update
 			err = d.ddnsProvider.Update(domain, record, lastIP)
 			if err != nil {
-				status <- task.ErrorStatusf("Unable to update DNS, will retry in %d seconds. Erorr was:\n%v", updatePeriod/time.Second, err)
+				status.Errorf("Unable to update DNS, will retry in %d seconds. Erorr was:\n%v", updatePeriod/time.Second, err)
 				time.Sleep(retryDelay)
 				continue
 			}
+
+			status.Msgf(StatusInfo{AtEndOfUpdate: true}, "Successfully updated DNS")
+
 			// Do another run check before the sleep occurs so as to not draw out the stop operation
 			if !d.shouldRun {
-				break
+				status.Msgf(StatusInfo{AtEndOfUpdate: false}, "Daemon stopped")
+				return
 			}
 			time.Sleep(updatePeriod)
 		}
@@ -168,7 +179,7 @@ func (d *DDNSDaemon) Start(updatePeriod, retryDelay time.Duration) (status chan 
 }
 
 // StartWithDefaults calls Start but with default values
-func (d *DDNSDaemon) StartWithDefaults() chan task.Status {
+func (d *DDNSDaemon) StartWithDefaults() (status task.StatusStream[StatusInfo]) {
 	t := 10 * time.Second
 	return d.Start(t, t)
 }

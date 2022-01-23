@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
-	"github.com/mattolenik/cloudflare-ddns-client/ddns"
 	"github.com/mattolenik/cloudflare-ddns-client/test"
 )
 
@@ -39,38 +38,45 @@ func TestDaemon(t *testing.T) {
 	retryDelay := 50 * time.Millisecond
 	domain := "abc.com"
 	record := "xyz.abc.com"
-	currentSuffix := 0
-	currentIP := ""
-	ipGen := func() (string, error) {
+	currentIP := "1.1.1.1"
+	currentSuffix := 1
+	numUpdates := 10
+
+	ctrl, ddnsProvider, ipProvider, configProvider := fixtures(t)
+	defer ctrl.Finish()
+
+	ddnsDaemon := NewDefaultDaemon(ddnsProvider, ipProvider, configProvider)
+
+	// Provide a new IP every time the daemon does an update within its internal loop
+	ddnsDaemon.AfterUpdate = func() {
 		currentSuffix++
 		currentIP = fmt.Sprintf("1.1.1.%d", currentSuffix)
-		return currentIP, nil
 	}
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-	ddnsProvider, ipProvider, configProvider := fixtures(ctrl)
-	ddnsDaemon := ddns.NewDefaultDaemon(ddnsProvider, ipProvider, configProvider)
+	// NOTE: Start does not block
+	_ = ddnsDaemon.Start(updatePeriod, retryDelay)
 
-	getCurrentIP := func() interface{} { return currentIP }
+	for i := 0; i < numUpdates; i++ {
 
-	ddnsDaemon.Start(updatePeriod, retryDelay)
+		configProvider.EXPECT().Get().Return(domain, record, nil)
+		ipProvider.EXPECT().Get().DoAndReturn(currentIP)
 
-	configProvider.EXPECT().Get().Return(domain, record, nil)
-	ipProvider.EXPECT().Get().DoAndReturn(ipGen)
-	//ddnsProvider.EXPECT().Update(gomock.Eq(domain), gomock.Eq(record), gomock.Eq(ip)).Return(nil).Times(1)
-	//ddnsProvider.EXPECT().Get(domain, record).Return(ip, nil).Times(1)
-	ddnsProvider.EXPECT().
-		Update(
-			gomock.Eq(domain),
-			gomock.Eq(record),
-			FnMatch(gomock.Eq, getCurrentIP),
-		).AnyTimes()
+		ddnsProvider.EXPECT().Update(gomock.Eq(domain), gomock.Eq(record), gomock.Eq(currentIP)).Return(nil).AnyTimes() // TODO: specify return # times
+		ddnsProvider.EXPECT().Get(domain, record).Return(currentIP).Times(1)
+		ddnsProvider.EXPECT().
+			Update(
+				gomock.Eq(domain),
+				gomock.Eq(record),
+				gomock.Eq(currentIP),
+			).AnyTimes() // TODO: specify return # times
+	}
 }
 
-func fixtures(ctrl *gomock.Controller) (ddnsProvider *MockDDNSProvider, ipProvider *MockIPProvider, configProvider *MockConfigProvider) {
-	return NewMockDDNSProvider(ctrl),
-		NewMockIPProvider(ctrl),
-		NewMockConfigProvider(ctrl)
+func fixtures(t *testing.T) (mockController gomock.Controller, ddnsProvider *MockDDNSProvider, ipProvider *MockIPProvider, configProvider *MockConfigProvider) {
+	ctrl := *gomock.NewController(t)
+	return ctrl,
+		NewMockDDNSProvider(&ctrl),
+		NewMockIPProvider(&ctrl),
+		NewMockConfigProvider(&ctrl)
 }
 
 type funcMatcher struct {
