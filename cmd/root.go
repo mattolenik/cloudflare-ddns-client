@@ -3,8 +3,10 @@ package cmd
 import (
 	"context"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/juju/errors"
@@ -104,6 +106,7 @@ func initConfig() {
 
 func runDaemon(provider ddns.DDNSProvider, daemon *ddns.DDNSDaemon) error {
 	statusChan := daemon.StartWithDefaults()
+	setupCloseHandler(daemon)
 	for {
 		select {
 		case status := <-statusChan:
@@ -116,11 +119,23 @@ func runDaemon(provider ddns.DDNSProvider, daemon *ddns.DDNSDaemon) error {
 				log.Error().Msg("FATAL: " + status.Message)
 				return status.Error
 			}
-			if status.IsDone {
-				return nil
-			}
 		default:
 			time.Sleep(1 * time.Second)
 		}
 	}
+}
+
+func setupCloseHandler(daemon *ddns.DDNSDaemon) {
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-c
+		log.Info().Msg("User pressed CTRL-C, attempting graceful shutdown")
+		daemon.Stop()
+		daemon.Wait()
+		if daemon.ExitError != nil {
+			log.Fatal().Msgf("Graceful shutdown failed due to error: %s", daemon.ExitError)
+		}
+		os.Exit(0)
+	}()
 }
