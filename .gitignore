@@ -16,3 +16,4 @@
 dist/
 test.toml
 test-results/
+.vscode/

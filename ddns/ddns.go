@@ -108,10 +108,11 @@ type StatusInfo struct {
 // Start continually keeps DDNS up to date, asynchronously in a new goroutine.
 // updatePeriod - how often to check for updates
 // retryDelay   - how long to wait until retry after a failure
-func (d *DDNSDaemon) Start(updatePeriod, retryDelay time.Duration) (status task.StatusStream[StatusInfo]) {
+func (d *DDNSDaemon) Start(updatePeriod, retryDelay time.Duration) task.StatusStream[StatusInfo] {
 	var lastIP string
 	var lastIPUpdate time.Time
 
+	status := make(task.StatusStream[StatusInfo], 128)
 	status.Infof("Daemon running, will now monitor for IP updates every %d seconds", int(updatePeriod.Seconds()))
 
 	d.wg = sync.WaitGroup{}
