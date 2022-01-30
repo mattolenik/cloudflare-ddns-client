@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -106,9 +105,7 @@ func initConfig() {
 }
 
 func runDaemon(provider ddns.DDNSProvider, daemon *ddns.DDNSDaemon) error {
-	fmt.Println(1)
 	statusChan := daemon.StartWithDefaults()
-	fmt.Println(2)
 	setupCloseHandler(daemon)
 	for {
 		select {
