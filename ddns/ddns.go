@@ -57,7 +57,7 @@ type Daemon[T any] interface {
 }
 
 type DDNSDaemon struct {
-	Daemon[StatusInfo]
+	Daemon[any]
 	ExitError      error
 	shouldRun      bool
 	ddnsProvider   DDNSProvider
@@ -65,8 +65,7 @@ type DDNSDaemon struct {
 	configProvider ConfigProvider
 	wg             sync.WaitGroup
 
-	BeforeUpdate func()
-	AfterUpdate  func()
+	AfterUpdate func()
 }
 
 // NewDefaultDaemon creates a new DDNSDaemon
@@ -102,22 +101,19 @@ func (d *DDNSDaemon) Update() error {
 	return errors.Annotatef(err, "failed to update DNS")
 }
 
-type StatusInfo struct {
-}
-
 // Start continually keeps DDNS up to date, asynchronously in a new goroutine.
 // updatePeriod - how often to check for updates
 // retryDelay   - how long to wait until retry after a failure
-func (d *DDNSDaemon) Start(updatePeriod, retryDelay time.Duration) task.StatusStream[StatusInfo] {
+func (d *DDNSDaemon) Start(updatePeriod, retryDelay time.Duration) task.StatusStream[any] {
 	var lastIP string
 	var lastIPUpdate time.Time
 
-	status := make(task.StatusStream[StatusInfo], 128)
+	status := make(task.StatusStream[any], 128)
 	status.Infof("Daemon running, will now monitor for IP updates every %d seconds", int(updatePeriod.Seconds()))
 
 	d.wg = sync.WaitGroup{}
 
-	func() {
+	go func() {
 		d.wg.Add(1)
 		defer d.wg.Done()
 		defer close(status)
@@ -192,14 +188,14 @@ func (d *DDNSDaemon) Start(updatePeriod, retryDelay time.Duration) task.StatusSt
 }
 
 // StartWithDefaults calls Start but with default values
-func (d *DDNSDaemon) StartWithDefaults() (status task.StatusStream[StatusInfo]) {
-	t := 10 * time.Second
+func (d *DDNSDaemon) StartWithDefaults() (status task.StatusStream[any]) {
+	t := 1 * time.Second
 	return d.Start(t, t)
 }
 
 // Stop instructs the daemon to stop as soon as the current (if any) operation is finished
 func (d *DDNSDaemon) Stop() {
-	d.shouldRun = true
+	d.shouldRun = false
 }
 
 func (d *DDNSDaemon) Wait() {
