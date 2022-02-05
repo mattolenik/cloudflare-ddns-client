@@ -35,13 +35,14 @@ For example:
     DOMAIN=mydomain.com RECORD=sub.mydomain.com TOKEN=<api-token> cloudflare-ddns
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		provider, err := providers.NewCloudFlareProvider(context.Background(), conf.Token.Get())
+		status := task.NewStatusStream[any]()
+		provider, err := providers.NewCloudFlareProvider(context.Background(), status, conf.Token.Get())
 		if err != nil {
 			return errors.Annotatef(err, "failed to configure DDNS provider")
 		}
-		daemon := ddns.NewDefaultDaemon(provider, ddns.NewDefaultIPProvider(), ddns.NewDefaultConfigProvider())
+		daemon := ddns.NewDefaultDaemon(status, provider, ddns.NewDefaultIPProvider(), ddns.NewDefaultConfigProvider())
 		if conf.Daemon.Get() {
-			return errors.Trace(runDaemon(provider, daemon))
+			return errors.Trace(runDaemon(status, provider, daemon))
 		}
 		return errors.Trace(daemon.Update())
 	},
@@ -104,12 +105,12 @@ func initConfig() {
 	}
 }
 
-func runDaemon(provider ddns.DDNSProvider, daemon *ddns.DDNSDaemon) error {
-	statusChan := daemon.StartWithDefaults()
+func runDaemon(status task.StatusStream[any], provider ddns.DDNSProvider, daemon *ddns.DDNSDaemon) error {
+	daemon.StartWithDefaults()
 	setupCloseHandler(daemon)
 	for {
 		select {
-		case status := <-statusChan:
+		case status := <-status:
 			switch status.Type {
 			case task.Info:
 				log.Info().Msg(status.Message)
@@ -131,8 +132,16 @@ func setupCloseHandler(daemon *ddns.DDNSDaemon) {
 	go func() {
 		<-c
 		log.Info().Msg("User pressed CTRL-C, attempting graceful shutdown")
+		isAlive := false
+		go func() {
+			time.Sleep(10 * time.Second)
+			if !isAlive {
+				log.Fatal().Msg("Graceful shutdown timed out, exiting")
+			}
+		}()
 		daemon.Stop()
 		daemon.Wait()
+		isAlive = true
 		if daemon.ExitError != nil {
 			log.Fatal().Msgf("Graceful shutdown failed due to error: %s", daemon.ExitError)
 		}

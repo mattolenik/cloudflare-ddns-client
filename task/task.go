@@ -16,10 +16,14 @@ type Status[T any] struct {
 	Type    StatusType
 	Message string
 	Error   error
-	Token   T
+	Data    T
 }
 
 type StatusStream[T any] chan Status[T]
+
+func NewStatusStream[T any]() StatusStream[T] {
+	return make(chan Status[T], 128)
+}
 
 func (s *StatusStream[T]) Info(msg string) {
 	*s <- Status[T]{
@@ -35,19 +39,19 @@ func (s *StatusStream[T]) Infof(format string, args ...any) {
 	}
 }
 
-func (s *StatusStream[T]) Msg(token T, message string) {
+func (s *StatusStream[T]) Msg(data T, message string) {
 	*s <- Status[T]{
 		Type:    Info,
 		Message: message,
-		Token:   token,
+		Data:    data,
 	}
 }
 
-func (s *StatusStream[T]) Msgf(token T, format string, args ...any) {
+func (s *StatusStream[T]) Msgf(data T, format string, args ...any) {
 	*s <- Status[T]{
 		Type:    Info,
 		Message: fmt.Sprintf(format, args...),
-		Token:   token,
+		Data:    data,
 	}
 }
 
