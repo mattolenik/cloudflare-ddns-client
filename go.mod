@@ -1,6 +1,6 @@
 module github.com/mattolenik/cloudflare-ddns-client
 
-go 1.17
+go 1.20
 
 require (
 	github.com/cloudflare/cloudflare-go v0.30.0
@@ -8,6 +8,7 @@ require (
 	github.com/juju/errors v0.0.0-20210818161939-5560c4c073ff
 	github.com/lixiangzhong/dnsutil v1.4.0
 	github.com/miekg/dns v1.1.45
+	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.26.1
 	github.com/spf13/cobra v1.3.0
 	github.com/spf13/pflag v1.0.5
@@ -30,7 +31,6 @@ require (
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mitchellh/mapstructure v1.4.3 // indirect
 	github.com/pelletier/go-toml v1.9.4 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/spf13/afero v1.8.0 // indirect
 	github.com/spf13/cast v1.4.1 // indirect
