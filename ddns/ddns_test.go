@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
-	"github.com/mattolenik/cloudflare-ddns-client/ddns"
 	"github.com/mattolenik/cloudflare-ddns-client/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -77,7 +76,7 @@ func TestDaemon(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	ddnsProvider, ipProvider, configProvider := fixtures(ctrl)
-	ddnsDaemon := ddns.NewDefaultDaemon(ddnsProvider, ipProvider, configProvider)
+	ddnsDaemon := NewDefaultDaemon(ddnsProvider, ipProvider, configProvider)
 
 	daemon.Should("run", func(t *testing.T, assert *assert.Assertions, require *require.Assertions) {
 		getCurrentIP := func() interface{} { return currentIP }

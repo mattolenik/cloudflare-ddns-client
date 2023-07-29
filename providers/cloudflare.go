@@ -29,7 +29,7 @@ func (p *CloudFlareProvider) Get(domain, record string) (string, error) {
 		return "", errors.Annotatef(err, "unable to retrieve zone ID for domain '%s' from CloudFlare", domain)
 	}
 	// Get the record ID
-	records, err := p.client.DNSRecords(p.ctx, zoneID, cloudflare.DNSRecord{Type: "A"})
+	records, _, err := p.client.ListDNSRecords(p.ctx, cloudflare.ZoneIdentifier(zoneID), cloudflare.ListDNSRecordsParams{Type: "A"})
 	if err != nil {
 		return "", errors.Annotate(err, "unable to retrieve zone ID from CloudFlare")
 	}
@@ -51,7 +51,7 @@ func (p *CloudFlareProvider) Update(domain, record, ip string) error {
 		return errors.Annotatef(err, "unable to retrieve zone ID for domain '%s' from CloudFlare", domain)
 	}
 	// Get the record ID
-	records, err := p.client.DNSRecords(p.ctx, zoneID, cloudflare.DNSRecord{Type: "A"})
+	records, _, err := p.client.ListDNSRecords(p.ctx, cloudflare.ZoneIdentifier(zoneID), cloudflare.ListDNSRecordsParams{Type: "A"})
 	if err != nil {
 		return errors.Annotate(err, "unable to retrieve zone ID from CloudFlare")
 	}
@@ -71,7 +71,7 @@ func (p *CloudFlareProvider) Update(domain, record, ip string) error {
 	// Create the record if it's not already there
 	if recordID == "" {
 		log.Info().Msgf("No DNS record '%s' found for domain '%s', creating now", record, domain)
-		resp, err := p.client.CreateDNSRecord(p.ctx, zoneID, cloudflare.DNSRecord{
+		_, err := p.client.CreateDNSRecord(p.ctx, cloudflare.ZoneIdentifier(zoneID), cloudflare.CreateDNSRecordParams{
 			Content: ip,
 			Type:    "A",
 			Name:    record,
@@ -79,15 +79,14 @@ func (p *CloudFlareProvider) Update(domain, record, ip string) error {
 		if err != nil {
 			return errors.Annotatef(err, "failed to create DNS record '%s' on domain '%s'", record, domain)
 		}
-		recordID = resp.Result.ID
-	}
-	// Update the record
-	err = p.client.UpdateDNSRecord(p.ctx, zoneID, recordID, cloudflare.DNSRecord{
-		Content: ip,
-		Type:    "A",
-	})
-	if err != nil {
-		return errors.Annotatef(err, "failed to update DNS record '%s' to IP address '%s'", record, ip)
+	} else {
+		_, err = p.client.UpdateDNSRecord(p.ctx, cloudflare.ZoneIdentifier(zoneID), cloudflare.UpdateDNSRecordParams{
+			Content: ip,
+			Type:    "A",
+		})
+		if err != nil {
+			return errors.Annotatef(err, "failed to update DNS record '%s' to IP address '%s'", record, ip)
+		}
 	}
 
 	log.Info().Msgf("Successfully updated DNS record '%s' to point to '%s'", record, ip)

@@ -27,14 +27,15 @@ type EndToEndSuite struct {
 	CF         *cloudflare.API
 	TestBinary string
 	ctx        context.Context
+	rand       *rand.Rand
 }
 
 func TestEndToEndSuite(t *testing.T) {
-	rand.Seed(time.Now().UnixNano())
 	suite.Run(t, new(EndToEndSuite))
 }
 
 func (s *EndToEndSuite) SetupSuite() {
+	s.rand = rand.New(rand.NewSource(time.Now().UnixNano()))
 	s.ctx = context.Background()
 	require := s.Require()
 	var err error
@@ -127,7 +128,7 @@ func (s *EndToEndSuite) TestWithEnvVars() {
 func (s *EndToEndSuite) deleteRecord(record string) {
 	r, err := s.getDNSRecordByName(record)
 	s.Assert().NoErrorf(err, "Could not find DNS record of name '%s' in zone ID '%s', cannot clean up", record, s.ZoneID)
-	err = s.CF.DeleteDNSRecord(s.ctx, s.ZoneID, r.ID)
+	err = s.CF.DeleteDNSRecord(s.ctx, cloudflare.ZoneIdentifier(s.ZoneID), r.ID)
 	s.Assert().NoErrorf(err, "Failed to remove DNS record of name '%s' in zone ID '%s'", record, s.ZoneID)
 }
 
@@ -139,7 +140,7 @@ func (s *EndToEndSuite) ipMatches(record string) bool {
 }
 
 func (s *EndToEndSuite) getDNSRecordByName(record string) (*cloudflare.DNSRecord, error) {
-	records, err := s.CF.DNSRecords(s.ctx, s.ZoneID, cloudflare.DNSRecord{Type: "A"})
+	records, _, err := s.CF.ListDNSRecords(s.ctx, cloudflare.ZoneIdentifier(s.ZoneID), cloudflare.ListDNSRecordsParams{Type: "A"})
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
@@ -153,7 +154,7 @@ func (s *EndToEndSuite) getDNSRecordByName(record string) (*cloudflare.DNSRecord
 
 func (s *EndToEndSuite) createRandomDNSRecord(ip string) string {
 	record := s.randomDNSRecord()
-	_, err := s.CF.CreateDNSRecord(s.ctx, s.ZoneID, cloudflare.DNSRecord{
+	_, err := s.CF.CreateDNSRecord(s.ctx, cloudflare.ZoneIdentifier(s.ZoneID), cloudflare.CreateDNSRecordParams{
 		Content: ip,
 		Type:    "A",
 		Name:    record,
@@ -163,7 +164,7 @@ func (s *EndToEndSuite) createRandomDNSRecord(ip string) string {
 }
 
 func (s *EndToEndSuite) randomDNSRecord() string {
-	return fmt.Sprintf("ddns-e2e-test-%d.%s", rand.Intn(999999)+100000, s.Domain)
+	return fmt.Sprintf("ddns-e2e-test-%d.%s", s.rand.Intn(999999)+100000, s.Domain)
 }
 
 func (s *EndToEndSuite) runProgram(envVars []string, args ...string) (string, error) {
