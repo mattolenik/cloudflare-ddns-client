@@ -81,6 +81,7 @@ func (p *CloudFlareProvider) Update(domain, record, ip string) error {
 		}
 	} else {
 		_, err = p.client.UpdateDNSRecord(p.ctx, cloudflare.ZoneIdentifier(zoneID), cloudflare.UpdateDNSRecordParams{
+			ID:      recordID,
 			Content: ip,
 			Type:    "A",
 		})

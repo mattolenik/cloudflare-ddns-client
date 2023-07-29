@@ -56,6 +56,7 @@ func init() {
 	f := Root.PersistentFlags()
 	conf.Config.BindVar(f, &conf.ConfigFile)
 	conf.Domain.Bind(f).WithDefault()
+	conf.IP.Bind(f)
 	conf.Record.Bind(f).WithDefault()
 	conf.Token.Bind(f).WithDefault()
 	conf.JSONOutput.Bind(f).WithDefault()

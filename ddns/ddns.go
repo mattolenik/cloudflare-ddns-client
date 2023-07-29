@@ -3,6 +3,7 @@ package ddns
 //go:generate mockgen -destination=../mocks/mock_ddns.go -package=mocks -source=ddns.go
 
 import (
+	"net"
 	"time"
 
 	"github.com/juju/errors"
@@ -83,9 +84,19 @@ func NewDefaultDaemon(ddnsProvider DDNSProvider, ipProvider IPProvider, configPr
 
 // Update performs a one time DDNS update.
 func (d *DDNSDaemon) Update() error {
-	ip, err := d.ipProvider.Get()
-	if err != nil {
-		return errors.Annotate(err, "unable to retrieve public IP")
+	var err error
+	var ip string
+	confIP := conf.IP.Get()
+	if confIP == "" {
+		ip, err = d.ipProvider.Get()
+		if err != nil {
+			return errors.Annotate(err, "unable to retrieve public IP")
+		}
+	} else {
+		if net.ParseIP(confIP) == nil {
+			return errors.Errorf("invalid IP address: %q", confIP)
+		}
+		ip = confIP
 	}
 	domain, record, err := d.configProvider.Get()
 	if err != nil {

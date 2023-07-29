@@ -23,6 +23,10 @@ var (
 		Name:        "domain",
 		Description: "Domain name in CloudFlare, e.g. example.com",
 	}
+	IP = StringOption{
+		Name:        "ip",
+		Description: "An already known WAN IP, will not perform lookup",
+	}
 	Record = StringOption{
 		Name:        "record",
 		Description: "DNS record name in CloudFlare, may be subdomain or same as domain",
