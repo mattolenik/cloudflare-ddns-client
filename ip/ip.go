@@ -12,7 +12,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-var apiURLs = []string{"http://whatismyip.akamai.com", "https://ipecho.net/plain", "https://wtfismyip.com/text"}
+var apiURLs = []string{"http://whatismyip.akamai.com", "http://ipecho.net/plain", "http://ipv4.icanhazip.com"}
 
 type dnsLookup struct {
 	// DNS server to dig
@@ -51,7 +51,15 @@ func GetPublicIPWithRetry(numRetries int, delay time.Duration) (string, error) {
 // GetPublicIP tries to detect the public IP address of this machine. First using DNS, then using several public HTTP APIs.
 func GetPublicIP() (string, error) {
 	ip, success, errs := getPublicIPFromDNS(dnsLookupOpenDNS, dnsLookupGoogle)
-	if !success && len(errs) > 0 {
+	var isGoodIP bool
+	if isGoodIP = isValidIP(ip); !isGoodIP {
+		// errs = append(errs, errors.Errorf("invalid IP '%s' from DNS lookup of record '%s' at '%s'", record, lookup.RecordName, lookup.Address))
+		log.Error().Msgf("Appears to not be an IPv4 record: %s", ip)
+	}
+
+	log.Debug().Msgf("retrieved IP from DNS: %+v", ip)
+
+	if !isGoodIP || (!success && len(errs) > 0) {
 		log.Warn().Msgf("failed to retrieve IP from DNS: %+v", errs)
 		ip, success, errs := getPublicIPFromAPIs(apiURLs...)
 		if !success && len(errs) > 0 {
@@ -95,9 +103,7 @@ func getPublicIPFromDNS(lookups ...dnsLookup) (string, bool, []error) {
 			errs = append(errs, errors.Annotatef(err, "DNS lookup of record '%s' at '%s' failed", lookup.RecordName, lookup.Address))
 			continue
 		}
-		if !isValidIP(record) {
-			errs = append(errs, errors.Errorf("invalid IP '%s' from DNS lookup of record '%s' at '%s'", record, lookup.RecordName, lookup.Address))
-		}
+		log.Debug().Msgf("invalid IP '%s' from DNS lookup of record '%s' at '%s'", record, lookup.RecordName, lookup.Address)
 		return record, true, nil
 	}
 	return "", false, errs
@@ -158,7 +164,7 @@ func getDNSTXTRecord(addr, record string) (string, error) {
 	return out[0].Txt[0], nil
 }
 
-//  getDNSARecord gets a DNS A record
+// getDNSARecord gets a DNS A record
 func getDNSARecord(address, record string) (string, error) {
 	dig := dnsutil.Dig{}
 	dig.RemoteAddr = address
@@ -175,7 +181,7 @@ func getDNSARecord(address, record string) (string, error) {
 	return out[0].A.String(), nil
 }
 
-// isValidIP returns whether or not an IP address is valid
+// isValidIP returns whether or not an IP address is a valid IPv4 address
 func isValidIP(ip string) bool {
-	return net.ParseIP(ip) != nil
+	return net.ParseIP(ip).To4() != nil
 }

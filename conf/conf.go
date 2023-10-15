@@ -8,7 +8,7 @@ import (
 
 var (
 	ConfigFile            string // Path to the config file, if any
-	DefaultConfigFilename = "cloudflare-ddns.toml"
+	DefaultConfigFilename = "cloudflare-ddns"
 
 	Config = StringOption{
 		Name:        "config",
