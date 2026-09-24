@@ -9,6 +9,7 @@ import (
 	time "time"
 
 	gomock "github.com/golang/mock/gomock"
+	task "github.com/mattolenik/cloudflare-ddns-client/task"
 )
 
 // MockDDNSProvider is a mock of DDNSProvider interface.
@@ -164,25 +165,23 @@ func (m *MockDaemon) EXPECT() *MockDaemonMockRecorder {
 }
 
 // Start mocks base method.
-func (m *MockDaemon) Start(provider DDNSProvider, updatePeriod, failureRetryDelay time.Duration) error {
+func (m *MockDaemon) Start(updatePeriod, retryDelay time.Duration) chan task.Status {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Start", provider, updatePeriod, failureRetryDelay)
-	ret0, _ := ret[0].(error)
+	ret := m.ctrl.Call(m, "Start", updatePeriod, retryDelay)
+	ret0, _ := ret[0].(chan task.Status)
 	return ret0
 }
 
 // Start indicates an expected call of Start.
-func (mr *MockDaemonMockRecorder) Start(provider, updatePeriod, failureRetryDelay interface{}) *gomock.Call {
+func (mr *MockDaemonMockRecorder) Start(updatePeriod, retryDelay interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Start", reflect.TypeOf((*MockDaemon)(nil).Start), provider, updatePeriod, failureRetryDelay)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Start", reflect.TypeOf((*MockDaemon)(nil).Start), updatePeriod, retryDelay)
 }
 
 // Stop mocks base method.
-func (m *MockDaemon) Stop() error {
+func (m *MockDaemon) Stop() {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Stop")
-	ret0, _ := ret[0].(error)
-	return ret0
+	m.ctrl.Call(m, "Stop")
 }
 
 // Stop indicates an expected call of Stop.
@@ -192,15 +191,15 @@ func (mr *MockDaemonMockRecorder) Stop() *gomock.Call {
 }
 
 // Update mocks base method.
-func (m *MockDaemon) Update(provider DDNSProvider) error {
+func (m *MockDaemon) Update() error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Update", provider)
+	ret := m.ctrl.Call(m, "Update")
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Update indicates an expected call of Update.
-func (mr *MockDaemonMockRecorder) Update(provider interface{}) *gomock.Call {
+func (mr *MockDaemonMockRecorder) Update() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockDaemon)(nil).Update), provider)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockDaemon)(nil).Update))
 }
