@@ -1,0 +1,10 @@
+#!/bin/sh
+# Asus router custom DDNS script, place in /jffs/scripts/
+# Put cloudflare-ddns.toml in /jffs/opt/
+
+if /jffs/opt/cloudflare-ddns --config /jffs/opt/cloudflare-ddns.toml --ip $1; then
+  /sbin/ddns_custom_updated 1
+else
+  /sbin/ddns_custom_updated 0
+fi
+
