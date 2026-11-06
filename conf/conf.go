@@ -2,8 +2,6 @@ package conf
 
 import (
 	"fmt"
-
-	"github.com/mattolenik/cloudflare-ddns-client/meta"
 )
 
 var (
@@ -12,7 +10,7 @@ var (
 
 	Config = StringOption{
 		Name:        "config",
-		Description: fmt.Sprintf("Path to config file, or \"%s\" to read record, domain and token from Asus router nvram. If not specified will look for %s in the program dir (%s), $HOME/.config, or /etc, in that order", AsusNVRAMConfig, DefaultConfigFilename, meta.ProgramDir),
+		Description: fmt.Sprintf("Path to config file, or \"%s\" to read record, domain and token from Asus router nvram. If not specified will look for %s in the program dir, $HOME/.config, or /etc, in that order", AsusNVRAMConfig, DefaultConfigFilename),
 	}
 	Daemon = BoolOption{
 		Name:        "daemon",

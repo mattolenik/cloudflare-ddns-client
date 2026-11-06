@@ -145,7 +145,7 @@ Usage:
   cloudflare-ddns [flags]
 
 Flags:
-      --config string       Path to config file, or "asus-nvram" to read record, domain and token from Asus router nvram. If not specified will look for cloudflare-ddns.toml in the program dir (), $HOME/.config, or /etc, in that order
+      --config string       Path to config file, or "asus-nvram" to read record, domain and token from Asus router nvram. If not specified will look for cloudflare-ddns.toml in the program dir, $HOME/.config, or /etc, in that order
       --daemon              Run as a service, continually monitoring for IP changes
       --domain string       Domain name in CloudFlare, e.g. example.com
   -h, --help                help for cloudflare-ddns
