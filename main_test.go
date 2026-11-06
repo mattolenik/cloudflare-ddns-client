@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -123,6 +124,50 @@ func (s *EndToEndSuite) TestWithEnvVars() {
 	log.Println(out)
 	require.NoError(err, "Expected no error when running cloudflare-ddns")
 	assert.True(s.ipMatches(record), "Expected IP to have been updated")
+}
+
+func (s *EndToEndSuite) TestWithAsusNVRAM() {
+	assert := s.Assert()
+	require := s.Require()
+
+	record := s.randomDNSRecord()
+	defer s.deleteRecord(record)
+
+	syslog := path.Join(s.T().TempDir(), "syslog")
+	out, err := s.runProgram(append(s.mockRouterEnv(),
+		"NVRAM_ddns_hostname_x="+record,
+		"NVRAM_ddns_cloudflare_api_token="+s.Token,
+		"LOGGER_OUT="+syslog,
+	), "--config", "asus-nvram")
+	log.Println(out)
+	require.NoError(err, "Expected no error when running cloudflare-ddns")
+	assert.True(s.ipMatches(record), "Expected IP to have been updated")
+
+	logged, err := os.ReadFile(syslog)
+	require.NoError(err, "Expected logs to have been sent to logger")
+	assert.Contains(string(logged), "cloudflare-ddns-client")
+	assert.Contains(string(logged), "Using configuration from Asus router nvram")
+}
+
+func (s *EndToEndSuite) TestWithAsusNVRAMUnset() {
+	out, err := s.runProgram(s.mockRouterEnv(), "--config", "asus-nvram")
+	log.Println(out)
+	s.Require().Error(err, "Expected error when nvram values are not set")
+	s.Assert().Contains(out, "nvram value 'ddns_hostname_x' is not set")
+}
+
+func (s *EndToEndSuite) TestWithAsusNVRAMTokenUnset() {
+	out, err := s.runProgram(append(s.mockRouterEnv(), "NVRAM_ddns_hostname_x="+s.randomDNSRecord()), "--config", "asus-nvram")
+	log.Println(out)
+	s.Require().Error(err, "Expected error when token is not set in nvram")
+	s.Assert().Contains(out, "nvram set ddns_cloudflare_api_token=")
+}
+
+// mockRouterEnv returns env vars that put the mock nvram and logger scripts on PATH, mimicking an Asus router.
+func (s *EndToEndSuite) mockRouterEnv() []string {
+	dir, err := filepath.Abs("test/mocks/scripts")
+	s.Require().NoError(err)
+	return []string{"PATH=" + dir + string(os.PathListSeparator) + os.Getenv("PATH")}
 }
 
 func (s *EndToEndSuite) deleteRecord(record string) {

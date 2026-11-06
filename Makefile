@@ -67,8 +67,19 @@ mocks: ddns/mocks.go $(MOCKGEN_BIN)
 ddns/mocks.go: ddns/ddns.go
 	$(MOCKGEN_BIN) -package ddns -destination ddns/mocks.go -source ddns/ddns.go
 
+# Asus router tarballs, extract to /jffs to install. Static pattern rule so it takes precedence over $(BIN_NAME)-%
+ASUS_TARBALLS := $(DIST)/$(BIN_NAME)-asus-arm.tar.gz $(DIST)/$(BIN_NAME)-asus-arm64.tar.gz
+asus: $(ASUS_TARBALLS)
+$(ASUS_TARBALLS): $(DIST)/$(BIN_NAME)-asus-%.tar.gz: $(DIST)/$(BIN_NAME)-linux-% router-config/asus/ddns-start
+	rm -rf $(DIST)/asus-$* && mkdir -p $(DIST)/asus-$*/opt $(DIST)/asus-$*/scripts
+	cp $< $(DIST)/asus-$*/opt/cloudflare-ddns
+	cp router-config/asus/ddns-start $(DIST)/asus-$*/scripts/ddns-start
+	chmod 755 $(DIST)/asus-$*/opt/cloudflare-ddns $(DIST)/asus-$*/scripts/ddns-start
+	tar --owner=0 --group=0 -czf $@ -C $(DIST)/asus-$* opt scripts
+	rm -rf $(DIST)/asus-$*
+
 shasums: $(DIST)/$(BIN_NAME)-shasums
-$(DIST)/$(BIN_NAME)-shasums: all
+$(DIST)/$(BIN_NAME)-shasums: all asus
 	cd $(DIST) && shasum -a 256 $(BIN_NAME)-* > $(BIN_NAME)-shasums
 
 install:
@@ -96,4 +107,4 @@ fpm: $(DIST)/cloudflare-ddns-linux-amd64
 	  --config-files /etc/cloudflare-ddns.toml.example cloudflare-ddns.toml.example=/etc/ \
 	  $(DIST)/fpm/cloudflare-ddns=/usr/bin/
 
-.PHONY: clean install test
+.PHONY: asus clean install test

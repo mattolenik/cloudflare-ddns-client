@@ -21,7 +21,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Test and Build
-        run: make test all shasums
+        run: make test all asus shasums
         env:
           CLOUDFLARE_TOKEN: ${{ secrets.CLOUDFLARE_TOKEN }}
           TEST_DOMAIN: ${{ secrets.TEST_DOMAIN }}

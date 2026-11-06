@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -23,7 +24,7 @@ import (
 // Root is the root command of the program
 var Root = &cobra.Command{
 	SilenceUsage: true,
-	Use:          meta.ProgramFilename,
+	Use:          "cloudflare-ddns",
 	Short:        "Update a CloudFlare DNS record with your public IP",
 	Long: `A dynamic DNS client for CloudFlare. Automatically detects your public IP and
 creates/updates a DNS record in CloudFlare.
@@ -70,11 +71,33 @@ func init() {
 func initConfig() {
 	viper.AutomaticEnv()
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
+	asus := conf.ConfigFile == conf.AsusNVRAMConfig
+	var w io.Writer = os.Stderr
 	// TODO: use enums/string consts instead of hardcoded string "json"
 	if conf.JSONOutput.Get() != "json" {
-		writer := zerolog.ConsoleWriter{Out: os.Stderr}
-		log.Logger = log.Output(writer)
+		w = zerolog.ConsoleWriter{Out: os.Stderr}
 	}
+	if asus {
+		// Also send logs to the router's system log
+		w = zerolog.MultiLevelWriter(w, zerolog.ConsoleWriter{
+			Out:          conf.AsusLogWriter{},
+			NoColor:      true,
+			PartsExclude: []string{zerolog.TimestampFieldName},
+		})
+	}
+	log.Logger = log.Output(w)
+	if conf.Verbose.Get() {
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	} else {
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	}
+
+	if asus {
+		log.Info().Msg("Using configuration from Asus router nvram")
+		errhandler.Handle(conf.LoadAsusNVRAM())
+		return
+	}
+
 	if conf.ConfigFile != "" {
 		log.Info().Msgf("Using configuration from file '%s'", conf.ConfigFile)
 		// Use config file from the flag.
@@ -86,17 +109,8 @@ func initConfig() {
 		viper.SetConfigName(conf.DefaultConfigFilename)
 	}
 
-	// Config file is optional, ignore errors
-	err := viper.ReadInConfig()
-	if err != nil {
-		errhandler.Handle(err)
-	}
-	if conf.Verbose.Get() {
-		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	} else {
-		zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	}
 	// Config file is optional, continue if not found, unless config was specified by user and still not found
+	err := viper.ReadInConfig()
 	_, notFound := err.(viper.ConfigFileNotFoundError)
 	if !(notFound && conf.ConfigFile == "") {
 		errhandler.Handle(err)
