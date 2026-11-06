@@ -68,6 +68,14 @@ If on macOS:
 curl -sSLo /usr/local/bin/cloudflare-ddns $(curl -s https://api.github.com/repos/mattolenik/cloudflare-ddns-client/releases/latest | awk -F'"' '/browser_download_url.*darwin-amd64/ {print $4}') && chmod +x /usr/local/bin/cloudflare-ddns
 ```
 
+### Asus Router
+Requires [Asuswrt-Merlin](https://www.asuswrt-merlin.net/) with JFFS custom scripts enabled. SSH into the router and run:
+```sh
+[ "$(uname -m)" = aarch64 ] && ARCH=arm64 || ARCH=arm
+wget -qO- https://github.com/mattolenik/cloudflare-ddns-client/releases/latest/download/cloudflare-ddns-asus-$ARCH.tar.gz | tar -xzf - -C /jffs
+```
+This installs `/jffs/opt/cloudflare-ddns` and the [ddns-start](router-config/asus/ddns-start) script at `/jffs/scripts/ddns-start`. See [Asus Routers](#asus-routers) for configuration.
+
 ### Docker
 ```
 docker pull mattolenik/cloudflare-ddns-client
@@ -100,6 +108,19 @@ record = "subdomain.example.com"
 token = "your-cloudflare-api-token-here"
 ```
 
+### Asus Routers
+With `--config asus-nvram`, configuration is read from the router's nvram instead of a file or environment variables:
+ * `record` comes from `ddns_hostname_x`, the host name in the router's WAN > DDNS settings
+ * `domain` is inferred from the record, e.g. `sub.mydomain.com` or `mydomain.com` both give `mydomain.com`
+ * `token` comes from `ddns_cloudflare_api_token`, which must be set over SSH:
+   ```sh
+   nvram set ddns_cloudflare_api_token=<your-cloudflare-api-token> && nvram commit
+   ```
+
+Logs go to stderr and to the router's system log, tagged `cloudflare-ddns-client`.
+
+To use it as the router's custom DDNS provider, [install it on the router](#asus-router) and select "Custom" as the DDNS server in WAN > DDNS.
+
 ## Running Periodically with Cron
 TBD
 
@@ -118,20 +139,22 @@ creates/updates a DNS record in CloudFlare.
 
 Configuration flags can be set by defining an environment variable of the same name.
 For example:
-DOMAIN=mydomain.com RECORD=sub.mydomain.com TOKEN=<api-token> cloudflare-ddns
+    DOMAIN=mydomain.com RECORD=sub.mydomain.com TOKEN=<api-token> cloudflare-ddns
 
 Usage:
   cloudflare-ddns [flags]
 
 Flags:
-      --config string   Path to config file (default is /etc/cloudflare-ddns.toml)
-      --domain string   Domain name in CloudFlare, e.g. example.com
-  -h, --help            help for cloudflare-ddns
-      --json            Log format, either pretty or json, defaults to pretty
-      --record string   DNS record name in CloudFlare, may be subdomain or same as domain
-      --token string    CloudFlare API token with permissions Zone:Zone:Read and Zone:DNS:Edit
-  -v, --verbose         Verbose logging, prints additional log output
-      --version         version for cloudflare-ddns
+      --config string       Path to config file, or "asus-nvram" to read record, domain and token from Asus router nvram. If not specified will look for cloudflare-ddns.toml in the program dir, $HOME/.config, or /etc, in that order
+      --daemon              Run as a service, continually monitoring for IP changes
+      --domain string       Domain name in CloudFlare, e.g. example.com
+  -h, --help                help for cloudflare-ddns
+      --ip string           An already known WAN IP, will not perform lookup
+      --log-format string   Log format, either pretty or json, defaults to pretty (default "pretty")
+      --record string       DNS record name in CloudFlare, may be subdomain or same as domain
+      --token string        CloudFlare API token with permissions Zone:Zone:Read and Zone:DNS:Edit
+  -v, --verbose             Verbose logging, prints additional log output (default true)
+      --version             version for cloudflare-ddns
 
 ```
 

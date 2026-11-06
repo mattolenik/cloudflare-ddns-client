@@ -9,6 +9,8 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -27,14 +29,15 @@ type EndToEndSuite struct {
 	CF         *cloudflare.API
 	TestBinary string
 	ctx        context.Context
+	rand       *rand.Rand
 }
 
 func TestEndToEndSuite(t *testing.T) {
-	rand.Seed(time.Now().UnixNano())
 	suite.Run(t, new(EndToEndSuite))
 }
 
 func (s *EndToEndSuite) SetupSuite() {
+	s.rand = rand.New(rand.NewSource(time.Now().UnixNano()))
 	s.ctx = context.Background()
 	require := s.Require()
 	var err error
@@ -124,10 +127,59 @@ func (s *EndToEndSuite) TestWithEnvVars() {
 	assert.True(s.ipMatches(record), "Expected IP to have been updated")
 }
 
+func (s *EndToEndSuite) TestWithAsusNVRAM() {
+	assert := s.Assert()
+	require := s.Require()
+	env := s.mockRouterEnv()
+
+	record := s.randomDNSRecord()
+	defer s.deleteRecord(record)
+
+	syslog := path.Join(s.T().TempDir(), "syslog")
+	out, err := s.runProgram(append(env,
+		"NVRAM_ddns_hostname_x="+record,
+		"NVRAM_ddns_cloudflare_api_token="+s.Token,
+		"LOGGER_OUT="+syslog,
+	), "--config", "asus-nvram")
+	log.Println(out)
+	require.NoError(err, "Expected no error when running cloudflare-ddns")
+	assert.True(s.ipMatches(record), "Expected IP to have been updated")
+
+	logged, err := os.ReadFile(syslog)
+	require.NoError(err, "Expected logs to have been sent to logger")
+	assert.Contains(string(logged), "cloudflare-ddns-client")
+	assert.Contains(string(logged), "Using configuration from Asus router nvram")
+}
+
+func (s *EndToEndSuite) TestWithAsusNVRAMUnset() {
+	out, err := s.runProgram(s.mockRouterEnv(), "--config", "asus-nvram")
+	log.Println(out)
+	s.Require().Error(err, "Expected error when nvram values are not set")
+	s.Assert().Contains(out, "nvram value 'ddns_hostname_x' is not set")
+}
+
+func (s *EndToEndSuite) TestWithAsusNVRAMTokenUnset() {
+	out, err := s.runProgram(append(s.mockRouterEnv(), "NVRAM_ddns_hostname_x="+s.randomDNSRecord()), "--config", "asus-nvram")
+	log.Println(out)
+	s.Require().Error(err, "Expected error when token is not set in nvram")
+	s.Assert().Contains(out, "nvram set ddns_cloudflare_api_token=")
+}
+
+// mockRouterEnv returns env vars that put the mock nvram and logger scripts on PATH, mimicking an Asus router.
+// Skipped on Windows, which can't run the shell script mocks (and isn't an Asus router).
+func (s *EndToEndSuite) mockRouterEnv() []string {
+	if runtime.GOOS == "windows" {
+		s.T().Skip("Asus router mocks are shell scripts")
+	}
+	dir, err := filepath.Abs("test/mocks/scripts")
+	s.Require().NoError(err)
+	return []string{"PATH=" + dir + string(os.PathListSeparator) + os.Getenv("PATH")}
+}
+
 func (s *EndToEndSuite) deleteRecord(record string) {
 	r, err := s.getDNSRecordByName(record)
 	s.Assert().NoErrorf(err, "Could not find DNS record of name '%s' in zone ID '%s', cannot clean up", record, s.ZoneID)
-	err = s.CF.DeleteDNSRecord(s.ctx, s.ZoneID, r.ID)
+	err = s.CF.DeleteDNSRecord(s.ctx, cloudflare.ZoneIdentifier(s.ZoneID), r.ID)
 	s.Assert().NoErrorf(err, "Failed to remove DNS record of name '%s' in zone ID '%s'", record, s.ZoneID)
 }
 
@@ -139,7 +191,7 @@ func (s *EndToEndSuite) ipMatches(record string) bool {
 }
 
 func (s *EndToEndSuite) getDNSRecordByName(record string) (*cloudflare.DNSRecord, error) {
-	records, err := s.CF.DNSRecords(s.ctx, s.ZoneID, cloudflare.DNSRecord{Type: "A"})
+	records, _, err := s.CF.ListDNSRecords(s.ctx, cloudflare.ZoneIdentifier(s.ZoneID), cloudflare.ListDNSRecordsParams{Type: "A"})
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
@@ -153,7 +205,7 @@ func (s *EndToEndSuite) getDNSRecordByName(record string) (*cloudflare.DNSRecord
 
 func (s *EndToEndSuite) createRandomDNSRecord(ip string) string {
 	record := s.randomDNSRecord()
-	_, err := s.CF.CreateDNSRecord(s.ctx, s.ZoneID, cloudflare.DNSRecord{
+	_, err := s.CF.CreateDNSRecord(s.ctx, cloudflare.ZoneIdentifier(s.ZoneID), cloudflare.CreateDNSRecordParams{
 		Content: ip,
 		Type:    "A",
 		Name:    record,
@@ -163,7 +215,7 @@ func (s *EndToEndSuite) createRandomDNSRecord(ip string) string {
 }
 
 func (s *EndToEndSuite) randomDNSRecord() string {
-	return fmt.Sprintf("ddns-e2e-test-%d.%s", rand.Intn(999999)+100000, s.Domain)
+	return fmt.Sprintf("ddns-e2e-test-%d.%s", s.rand.Intn(999999)+100000, s.Domain)
 }
 
 func (s *EndToEndSuite) runProgram(envVars []string, args ...string) (string, error) {

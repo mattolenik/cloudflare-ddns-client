@@ -68,6 +68,14 @@ If on macOS:
 curl -sSLo /usr/local/bin/cloudflare-ddns $(curl -s https://api.github.com/repos/mattolenik/cloudflare-ddns-client/releases/latest | awk -F'"' '/browser_download_url.*darwin-amd64/ {print $4}') && chmod +x /usr/local/bin/cloudflare-ddns
 ```
 
+### Asus Router
+Requires [Asuswrt-Merlin](https://www.asuswrt-merlin.net/) with JFFS custom scripts enabled. SSH into the router and run:
+```sh
+[ "$(uname -m)" = aarch64 ] && ARCH=arm64 || ARCH=arm
+wget -qO- https://github.com/mattolenik/cloudflare-ddns-client/releases/latest/download/cloudflare-ddns-asus-$ARCH.tar.gz | tar -xzf - -C /jffs
+```
+This installs `/jffs/opt/cloudflare-ddns` and the [ddns-start](router-config/asus/ddns-start) script at `/jffs/scripts/ddns-start`. See [Asus Routers](#asus-routers) for configuration.
+
 ### Docker
 ```
 docker pull mattolenik/cloudflare-ddns-client
@@ -90,6 +98,19 @@ Example TOML configuration file:
 ```toml
 {{ run "cat" "cloudflare-ddns.toml.example" }}
 ```
+
+### Asus Routers
+With `--config asus-nvram`, configuration is read from the router's nvram instead of a file or environment variables:
+ * `record` comes from `ddns_hostname_x`, the host name in the router's WAN > DDNS settings
+ * `domain` is inferred from the record, e.g. `sub.mydomain.com` or `mydomain.com` both give `mydomain.com`
+ * `token` comes from `ddns_cloudflare_api_token`, which must be set over SSH:
+   ```sh
+   nvram set ddns_cloudflare_api_token=<your-cloudflare-api-token> && nvram commit
+   ```
+
+Logs go to stderr and to the router's system log, tagged `cloudflare-ddns-client`.
+
+To use it as the router's custom DDNS provider, [install it on the router](#asus-router) and select "Custom" as the DDNS server in WAN > DDNS.
 
 ## Running Periodically with Cron
 TBD

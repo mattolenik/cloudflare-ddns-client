@@ -1,0 +1,5 @@
+#!/bin/sh
+# Mock of logger: `logger -t <tag> <msg>` appends "<tag> <msg>" to $LOGGER_OUT if set.
+[ "$1" = -t ] || exit 1
+[ -n "$LOGGER_OUT" ] && printf '%s %s\n' "$2" "$3" >> "$LOGGER_OUT"
+exit 0

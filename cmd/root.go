@@ -2,10 +2,10 @@ package cmd
 
 import (
 	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/juju/errors"
 	"github.com/mattolenik/cloudflare-ddns-client/conf"
@@ -23,7 +23,7 @@ import (
 // Root is the root command of the program
 var Root = &cobra.Command{
 	SilenceUsage: true,
-	Use:          meta.ProgramFilename,
+	Use:          "cloudflare-ddns",
 	Short:        "Update a CloudFlare DNS record with your public IP",
 	Long: `A dynamic DNS client for CloudFlare. Automatically detects your public IP and
 creates/updates a DNS record in CloudFlare.
@@ -39,7 +39,7 @@ For example:
 		}
 		daemon := ddns.NewDefaultDaemon(provider, ddns.NewDefaultIPProvider(), ddns.NewDefaultConfigProvider())
 		if conf.Daemon.Get() {
-			return errors.Trace(runDaemon(provider, daemon))
+			return errors.Trace(runDaemon(daemon))
 		}
 		return errors.Trace(daemon.Update())
 	},
@@ -56,6 +56,7 @@ func init() {
 	f := Root.PersistentFlags()
 	conf.Config.BindVar(f, &conf.ConfigFile)
 	conf.Domain.Bind(f).WithDefault()
+	conf.IP.Bind(f)
 	conf.Record.Bind(f).WithDefault()
 	conf.Token.Bind(f).WithDefault()
 	conf.JSONOutput.Bind(f).WithDefault()
@@ -69,11 +70,33 @@ func init() {
 func initConfig() {
 	viper.AutomaticEnv()
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
+	asus := conf.ConfigFile == conf.AsusNVRAMConfig
+	var w io.Writer = os.Stderr
 	// TODO: use enums/string consts instead of hardcoded string "json"
 	if conf.JSONOutput.Get() != "json" {
-		writer := zerolog.ConsoleWriter{Out: os.Stderr}
-		log.Logger = log.Output(writer)
+		w = zerolog.ConsoleWriter{Out: os.Stderr}
 	}
+	if asus {
+		// Also send logs to the router's system log
+		w = zerolog.MultiLevelWriter(w, zerolog.ConsoleWriter{
+			Out:          conf.AsusLogWriter{},
+			NoColor:      true,
+			PartsExclude: []string{zerolog.TimestampFieldName},
+		})
+	}
+	log.Logger = log.Output(w)
+	if conf.Verbose.Get() {
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	} else {
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	}
+
+	if asus {
+		log.Info().Msg("Using configuration from Asus router nvram")
+		errhandler.Handle(conf.LoadAsusNVRAM())
+		return
+	}
+
 	if conf.ConfigFile != "" {
 		log.Info().Msgf("Using configuration from file '%s'", conf.ConfigFile)
 		// Use config file from the flag.
@@ -85,42 +108,25 @@ func initConfig() {
 		viper.SetConfigName(conf.DefaultConfigFilename)
 	}
 
-	// Config file is optional, ignore errors
-	err := viper.ReadInConfig()
-	if err != nil {
-		errhandler.Handle(err)
-	}
-	if conf.Verbose.Get() {
-		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	} else {
-		zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	}
 	// Config file is optional, continue if not found, unless config was specified by user and still not found
+	err := viper.ReadInConfig()
 	_, notFound := err.(viper.ConfigFileNotFoundError)
 	if !(notFound && conf.ConfigFile == "") {
 		errhandler.Handle(err)
 	}
 }
 
-func runDaemon(provider ddns.DDNSProvider, daemon *ddns.DDNSDaemon) error {
-	statusChan := daemon.StartWithDefaults()
-	for {
-		select {
-		case status := <-statusChan:
-			switch status.Type {
-			case task.Info:
-				log.Info().Msg(status.Message)
-			case task.Error:
-				log.Error().Msg(status.Message)
-			case task.Fatal:
-				log.Error().Msg("FATAL: " + status.Message)
-				return status.Error
-			}
-			if status.IsDone {
-				return nil
-			}
-		default:
-			time.Sleep(1 * time.Second)
+func runDaemon(daemon *ddns.DDNSDaemon) error {
+	for status := range daemon.StartWithDefaults() {
+		switch status.Type {
+		case task.Info:
+			log.Info().Msg(status.Message)
+		case task.Error:
+			log.Error().Msg(status.Message)
+		case task.Fatal:
+			log.Error().Msg("FATAL: " + status.Message)
+			return status.Error
 		}
 	}
+	return nil
 }

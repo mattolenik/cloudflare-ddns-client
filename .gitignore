@@ -16,3 +16,5 @@
 dist/
 test.toml
 test-results/
+cloudflare-ddns.toml
+

@@ -1,0 +1,9 @@
+#!/bin/sh
+# Asus router custom DDNS script, place in /jffs/scripts/
+# Reads hostname and API token from the router's DDNS settings (nvram); logs go to syslog.
+
+if /jffs/opt/cloudflare-ddns --config asus-nvram --ip $1; then
+  /sbin/ddns_custom_updated 1
+else
+  /sbin/ddns_custom_updated 0
+fi

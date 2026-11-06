@@ -1,15 +1,12 @@
 package ddns
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
 	"github.com/golang/mock/gomock"
-	"github.com/mattolenik/cloudflare-ddns-client/ddns"
+	"github.com/mattolenik/cloudflare-ddns-client/task"
 	"github.com/mattolenik/cloudflare-ddns-client/test"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestUpdate(t *testing.T) {
@@ -36,90 +33,65 @@ func TestUpdate(t *testing.T) {
 	assert.Equal(ip, actualIP)
 }
 
-type TestFlow struct {
-	t           *testing.T
-	assert      *assert.Assertions
-	require     *require.Assertions
-	description string
-}
-
-func It(t *testing.T, desc string) *TestFlow {
-	return &TestFlow{
-		description: desc,
-		t:           t,
-		assert:      assert.New(t),
-		require:     require.New(t),
-	}
-}
-
-// TODO: Make generic so should funcs can take any function type? Make not dependent upon testify if possible
-type ShouldFunc func(t *testing.T, assert *assert.Assertions, require *require.Assertions)
-
-func (f *TestFlow) Should(msg string, fn ShouldFunc) *TestFlow {
-	f.t.Run(fmt.Sprintf("It '%s' should '%s'", f.description, msg), func(t *testing.T) { fn(f.t, f.assert, f.require) })
-	return f
-}
-
 func TestDaemon(t *testing.T) {
-	daemon := It(t, "daemon")
-
-	updatePeriod := 50 * time.Millisecond
-	retryDelay := 50 * time.Millisecond
-	domain := "abc.com"
-	record := "xyz.abc.com"
-	currentSuffix := 0
-	currentIP := ""
-	ipGen := func() (string, error) {
-		currentSuffix++
-		currentIP = fmt.Sprintf("1.1.1.%d", currentSuffix)
-		return currentIP, nil
-	}
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+	assert, require, ctrl, cleanup := test.NewTools(t)
+	defer cleanup()
 	ddnsProvider, ipProvider, configProvider := fixtures(ctrl)
-	ddnsDaemon := ddns.NewDefaultDaemon(ddnsProvider, ipProvider, configProvider)
+	d := NewDefaultDaemon(ddnsProvider, ipProvider, configProvider)
 
-	daemon.Should("run", func(t *testing.T, assert *assert.Assertions, require *require.Assertions) {
-		getCurrentIP := func() interface{} { return currentIP }
+	domain, record := "abc.com", "xyz.abc.com"
+	// Public IP stays the same for two checks, then changes and stays changed
+	publicIPs := []string{"1.1.1.1", "1.1.1.1", "2.2.2.2"}
+	recordIP := ""
+	configProvider.EXPECT().Get().Return(domain, record, nil).AnyTimes()
+	ipProvider.EXPECT().Get().DoAndReturn(func() (string, error) {
+		ip := publicIPs[0]
+		if len(publicIPs) > 1 {
+			publicIPs = publicIPs[1:]
+		}
+		return ip, nil
+	}).AnyTimes()
+	ddnsProvider.EXPECT().Get(domain, record).DoAndReturn(func(_, _ string) (string, error) { return recordIP, nil }).AnyTimes()
+	setRecord := func(_, _, ip string) error { recordIP = ip; return nil }
+	gomock.InOrder(
+		ddnsProvider.EXPECT().Update(domain, record, "1.1.1.1").DoAndReturn(setRecord),
+		ddnsProvider.EXPECT().Update(domain, record, "2.2.2.2").DoAndReturn(setRecord),
+	)
 
-		ddnsDaemon.Start(updatePeriod, retryDelay)
+	statuses := d.Start(10*time.Millisecond, 10*time.Millisecond)
+	next := func() string {
+		select {
+		case s, ok := <-statuses:
+			require.True(ok, "status channel closed early")
+			assert.Equal(task.Info, s.Type, s.Message)
+			return s.Message
+		case <-time.After(time.Second):
+			require.FailNow("timed out waiting for daemon status")
+			return ""
+		}
+	}
+	assert.Contains(next(), "Daemon running")
+	assert.Equal("Found public IP '1.1.1.1'", next())
+	assert.Contains(next(), "No IP change detected")
+	assert.Equal("Detected new public IP address, it changed from '1.1.1.1' to '2.2.2.2'", next())
+	assert.Contains(next(), "No IP change detected")
 
-		configProvider.EXPECT().Get().Return(domain, record, nil)
-		ipProvider.EXPECT().Get().DoAndReturn(ipGen)
-		//ddnsProvider.EXPECT().Update(gomock.Eq(domain), gomock.Eq(record), gomock.Eq(ip)).Return(nil).Times(1)
-		//ddnsProvider.EXPECT().Get(domain, record).Return(ip, nil).Times(1)
-		ddnsProvider.EXPECT().
-			Update(
-				gomock.Eq(domain),
-				gomock.Eq(record),
-				FnMatch(gomock.Eq, getCurrentIP),
-			).AnyTimes()
-	})
+	d.Stop()
+	done := make(chan struct{})
+	go func() {
+		for range statuses {
+		}
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		require.FailNow("daemon did not stop")
+	}
 }
 
 func fixtures(ctrl *gomock.Controller) (ddnsProvider *MockDDNSProvider, ipProvider *MockIPProvider, configProvider *MockConfigProvider) {
 	return NewMockDDNSProvider(ctrl),
 		NewMockIPProvider(ctrl),
 		NewMockConfigProvider(ctrl)
-}
-
-type funcMatcher struct {
-	gomock.Matcher
-	value   func() interface{}
-	matchFn func(interface{}) gomock.Matcher
-}
-
-func FnMatch(matchFn func(interface{}) gomock.Matcher, value func() interface{}) gomock.Matcher {
-	return &funcMatcher{
-		matchFn: matchFn,
-		value:   value,
-	}
-}
-
-func (f *funcMatcher) Matches(x interface{}) bool {
-	return f.matchFn(x).Matches(x)
-}
-
-func (f *funcMatcher) String() string {
-	return "runs underlying match against new value each time"
 }

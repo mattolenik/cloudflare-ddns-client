@@ -1,0 +1,6 @@
+#!/bin/sh
+# Mock of Asus router nvram: `nvram get <key>` prints $NVRAM_<key>.
+# Like the real thing, unset keys print a blank line and still exit 0.
+[ "$1" = get ] || exit 1
+printenv "NVRAM_$2"
+exit 0

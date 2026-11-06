@@ -15,7 +15,7 @@ SOURCE               := $(shell find $(PROJECT_ROOT) -name '*.go')
 SOURCE_NO_TEST       := $(shell find $(PROJECT_ROOT) -name '*.go' ! -name '*_test.go')
 MOCKGEN_BIN          := $(DIST)/mockgen
 BINS                 := $(shell find $(DIST) -name '$(BIN_NAME)-*')
-PLATFORMS            ?= darwin-amd64 dragonfly-amd64 freebsd-amd64 freebsd-arm freebsd-arm64 linux-amd64 linux-arm linux-arm64 netbsd-amd64 netbsd-arm netbsd-arm64 openbsd-amd64 openbsd-arm openbsd-arm64 windows-amd64 windows-arm
+PLATFORMS            ?= darwin-amd64 dragonfly-amd64 freebsd-amd64 freebsd-arm freebsd-arm64 linux-amd64 linux-arm linux-arm64 netbsd-amd64 netbsd-arm netbsd-arm64 openbsd-amd64 openbsd-arm openbsd-arm64 windows-amd64
 DOCKER_PLATFORMS     ?= linux/amd64 linux/arm64
 DOCKER_REPO          ?= mattolenik
 DOCKER_TAG           ?= $(DOCKER_REPO)/cloudflare-ddns-client
@@ -67,8 +67,19 @@ mocks: ddns/mocks.go $(MOCKGEN_BIN)
 ddns/mocks.go: ddns/ddns.go
 	$(MOCKGEN_BIN) -package ddns -destination ddns/mocks.go -source ddns/ddns.go
 
+# Asus router tarballs, extract to /jffs to install. Static pattern rule so it takes precedence over $(BIN_NAME)-%
+ASUS_TARBALLS := $(DIST)/$(BIN_NAME)-asus-arm.tar.gz $(DIST)/$(BIN_NAME)-asus-arm64.tar.gz
+asus: $(ASUS_TARBALLS)
+$(ASUS_TARBALLS): $(DIST)/$(BIN_NAME)-asus-%.tar.gz: $(DIST)/$(BIN_NAME)-linux-% router-config/asus/ddns-start
+	rm -rf $(DIST)/asus-$* && mkdir -p $(DIST)/asus-$*/opt $(DIST)/asus-$*/scripts
+	cp $< $(DIST)/asus-$*/opt/cloudflare-ddns
+	cp router-config/asus/ddns-start $(DIST)/asus-$*/scripts/ddns-start
+	chmod 755 $(DIST)/asus-$*/opt/cloudflare-ddns $(DIST)/asus-$*/scripts/ddns-start
+	tar --owner=0 --group=0 -czf $@ -C $(DIST)/asus-$* opt scripts
+	rm -rf $(DIST)/asus-$*
+
 shasums: $(DIST)/$(BIN_NAME)-shasums
-$(DIST)/$(BIN_NAME)-shasums: all
+$(DIST)/$(BIN_NAME)-shasums: all asus
 	cd $(DIST) && shasum -a 256 $(BIN_NAME)-* > $(BIN_NAME)-shasums
 
 install:
@@ -96,4 +107,4 @@ fpm: $(DIST)/cloudflare-ddns-linux-amd64
 	  --config-files /etc/cloudflare-ddns.toml.example cloudflare-ddns.toml.example=/etc/ \
 	  $(DIST)/fpm/cloudflare-ddns=/usr/bin/
 
-.PHONY: clean install test
+.PHONY: asus clean install test

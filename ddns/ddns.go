@@ -3,6 +3,8 @@ package ddns
 //go:generate mockgen -destination=../mocks/mock_ddns.go -package=mocks -source=ddns.go
 
 import (
+	"net"
+	"sync/atomic"
 	"time"
 
 	"github.com/juju/errors"
@@ -56,7 +58,7 @@ type Daemon interface {
 
 type DDNSDaemon struct {
 	Daemon
-	shouldRun      bool
+	stopped        atomic.Bool
 	ddnsProvider   DDNSProvider
 	ipProvider     IPProvider
 	configProvider ConfigProvider
@@ -74,7 +76,6 @@ func NewDefaultDaemon(ddnsProvider DDNSProvider, ipProvider IPProvider, configPr
 		panic("configProvider must not be nil")
 	}
 	return &DDNSDaemon{
-		shouldRun:      true,
 		ddnsProvider:   ddnsProvider,
 		ipProvider:     ipProvider,
 		configProvider: configProvider,
@@ -83,9 +84,19 @@ func NewDefaultDaemon(ddnsProvider DDNSProvider, ipProvider IPProvider, configPr
 
 // Update performs a one time DDNS update.
 func (d *DDNSDaemon) Update() error {
-	ip, err := d.ipProvider.Get()
-	if err != nil {
-		return errors.Annotate(err, "unable to retrieve public IP")
+	var err error
+	var ip string
+	confIP := conf.IP.Get()
+	if confIP == "" {
+		ip, err = d.ipProvider.Get()
+		if err != nil {
+			return errors.Annotate(err, "unable to retrieve public IP")
+		}
+	} else {
+		if net.ParseIP(confIP) == nil {
+			return errors.Errorf("invalid IP address: %q", confIP)
+		}
+		ip = confIP
 	}
 	domain, record, err := d.configProvider.Get()
 	if err != nil {
@@ -98,15 +109,17 @@ func (d *DDNSDaemon) Update() error {
 // Start continually keeps DDNS up to date.
 // updatePeriod - how often to check for updates
 // retryDelay   - how long to wait until retry after a failure
-func (d *DDNSDaemon) Start(updatePeriod, retryDelay time.Duration) (status chan task.Status) {
-	var lastIP string
-	var lastIPUpdate time.Time
-
-	status <- task.InfoStatusf("Daemon running, will now monitor for IP updates every %d seconds", int(updatePeriod.Seconds()))
-
-	func() {
+// The returned channel must be read until it is closed, which happens after Stop or a fatal error.
+func (d *DDNSDaemon) Start(updatePeriod, retryDelay time.Duration) chan task.Status {
+	status := make(chan task.Status)
+	go func() {
 		defer close(status)
-		for d.shouldRun {
+		var lastIP string
+		var lastIPUpdate time.Time
+
+		status <- task.InfoStatusf("Daemon running, will now monitor for IP updates every %d seconds", int(updatePeriod.Seconds()))
+
+		for !d.stopped.Load() {
 			domain, record, err := d.configProvider.Get()
 			if err != nil {
 				status <- task.FatalStatusWrap(err, "unable to find domain or record in configuration")
@@ -158,7 +171,7 @@ func (d *DDNSDaemon) Start(updatePeriod, retryDelay time.Duration) (status chan 
 				continue
 			}
 			// Do another run check before the sleep occurs so as to not draw out the stop operation
-			if !d.shouldRun {
+			if d.stopped.Load() {
 				break
 			}
 			time.Sleep(updatePeriod)
@@ -175,5 +188,5 @@ func (d *DDNSDaemon) StartWithDefaults() chan task.Status {
 
 // Stop instructs the daemon to stop as soon as the current (if any) operation is finished
 func (d *DDNSDaemon) Stop() {
-	d.shouldRun = true
+	d.stopped.Store(true)
 }
