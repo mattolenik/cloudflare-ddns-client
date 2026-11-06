@@ -3,6 +3,7 @@ package conf
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -12,7 +13,11 @@ import (
 )
 
 // useMockRouter puts the mock nvram and logger scripts first on PATH, mimicking an Asus router.
+// Skipped on Windows, which can't run the shell script mocks (and isn't an Asus router).
 func useMockRouter(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Asus router mocks are shell scripts")
+	}
 	dir, err := filepath.Abs("../test/mocks/scripts")
 	require.NoError(t, err)
 	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))

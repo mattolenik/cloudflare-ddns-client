@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -129,12 +130,13 @@ func (s *EndToEndSuite) TestWithEnvVars() {
 func (s *EndToEndSuite) TestWithAsusNVRAM() {
 	assert := s.Assert()
 	require := s.Require()
+	env := s.mockRouterEnv()
 
 	record := s.randomDNSRecord()
 	defer s.deleteRecord(record)
 
 	syslog := path.Join(s.T().TempDir(), "syslog")
-	out, err := s.runProgram(append(s.mockRouterEnv(),
+	out, err := s.runProgram(append(env,
 		"NVRAM_ddns_hostname_x="+record,
 		"NVRAM_ddns_cloudflare_api_token="+s.Token,
 		"LOGGER_OUT="+syslog,
@@ -164,7 +166,11 @@ func (s *EndToEndSuite) TestWithAsusNVRAMTokenUnset() {
 }
 
 // mockRouterEnv returns env vars that put the mock nvram and logger scripts on PATH, mimicking an Asus router.
+// Skipped on Windows, which can't run the shell script mocks (and isn't an Asus router).
 func (s *EndToEndSuite) mockRouterEnv() []string {
+	if runtime.GOOS == "windows" {
+		s.T().Skip("Asus router mocks are shell scripts")
+	}
 	dir, err := filepath.Abs("test/mocks/scripts")
 	s.Require().NoError(err)
 	return []string{"PATH=" + dir + string(os.PathListSeparator) + os.Getenv("PATH")}
