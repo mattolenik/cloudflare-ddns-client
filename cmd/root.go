@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/juju/errors"
 	"github.com/mattolenik/cloudflare-ddns-client/conf"
@@ -40,7 +39,7 @@ For example:
 		}
 		daemon := ddns.NewDefaultDaemon(provider, ddns.NewDefaultIPProvider(), ddns.NewDefaultConfigProvider())
 		if conf.Daemon.Get() {
-			return errors.Trace(runDaemon(provider, daemon))
+			return errors.Trace(runDaemon(daemon))
 		}
 		return errors.Trace(daemon.Update())
 	},
@@ -117,25 +116,17 @@ func initConfig() {
 	}
 }
 
-func runDaemon(provider ddns.DDNSProvider, daemon *ddns.DDNSDaemon) error {
-	statusChan := daemon.StartWithDefaults()
-	for {
-		select {
-		case status := <-statusChan:
-			switch status.Type {
-			case task.Info:
-				log.Info().Msg(status.Message)
-			case task.Error:
-				log.Error().Msg(status.Message)
-			case task.Fatal:
-				log.Error().Msg("FATAL: " + status.Message)
-				return status.Error
-			}
-			if status.IsDone {
-				return nil
-			}
-		default:
-			time.Sleep(1 * time.Second)
+func runDaemon(daemon *ddns.DDNSDaemon) error {
+	for status := range daemon.StartWithDefaults() {
+		switch status.Type {
+		case task.Info:
+			log.Info().Msg(status.Message)
+		case task.Error:
+			log.Error().Msg(status.Message)
+		case task.Fatal:
+			log.Error().Msg("FATAL: " + status.Message)
+			return status.Error
 		}
 	}
+	return nil
 }
